@@ -1,0 +1,34 @@
+Revision history for Term::Choose::Util
+
+
+0.004   2014-04-09
+        - Update options.
+        - Update function "insert_sep".
+        - Update documentation.
+        - Update Makefile.PL.
+
+0.003   2014-03-20
+        - Bugfix in term_size.
+        - Update documentation.
+
+0.002   2014-03-19
+        - Added spelling test.
+        - Fixed some spelling errors.
+
+0.001   2014-03-19
+        - Update options.
+        - Improved documentation.
+
+0.000_04   2014-03-18
+        - Pod test.
+
+0.000_03   2014-03-16
+        - Improved documentation.
+
+0.000_02   2014-03-16
+        - New functions: "print_hash" and "length_longest".
+        - Code refactoring.
+        - Improved documentation.
+
+0.000_01   2014-03-13
+        - First developer release on CPAN.
