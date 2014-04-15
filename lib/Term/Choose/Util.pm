@@ -4,11 +4,12 @@ use warnings;
 use strict;
 use 5.10.1;
 
-our $VERSION = '0.004';
+our $VERSION = '0.005';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_number choose_a_subset choose_multi insert_sep
                      length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
 
+use Cwd                   qw( realpath );
 use Encode                qw( decode encode );
 use File::Basename        qw( dirname );
 use File::Spec::Functions qw( catdir );
@@ -42,10 +43,12 @@ sub choose_a_directory {
     my $layout      = $opt->{layout}       // 3;
     my $order       = $opt->{order}        // 1;
     my $justify     = $opt->{justify}      // 0;
-    #------------------------------------------#
-    my $confirm     = $opt->{confirm}      // '- OK -';
-    my $up          = $opt->{up}           // '- Up -';
-    my $back        = $opt->{back}         // '- << -';
+    my $enchanted   = $opt->{enchanted }   // 1;
+    my $confirm     = $opt->{confirm}      // '.';
+    my $up          = $opt->{up}           // '..';
+    my $back        = $opt->{back}         // '<';
+    my $default     = $enchanted  ? 2 : 0;
+    $dir            = realpath $dir;
     my $curr        = $dir;
     my $previous    = $dir;
     while ( 1 ) {
@@ -69,13 +72,14 @@ sub choose_a_directory {
         $prompt   .= '    New dir: "' . decode( 'locale_fs', $dir  ) . '"' . "\n\n";
         my $choice = choose(
             [ undef, $confirm, $up, sort( @dirs ) ],
-            { prompt => $prompt, undef => $back, default => 0, mouse => $mouse, justify => $justify,
-              layout => $layout, order => $order, clear_screen => $clear }
+            { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
+              justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
         );
         return if ! defined $choice;
         return $previous if $choice eq $confirm;
         $choice = encode( 'locale_fs', $choice );
         $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, $choice );
+        $default = $previous eq $dir ? 0 : $enchanted  ? 2 : 0;
         $previous = $dir;
     }
 }
@@ -483,7 +487,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.004
+Version 0.005
 
 =cut
 
@@ -493,7 +497,7 @@ See L</SUBROUTINES>.
 
 =head1 DESCRIPTION
 
-This module provides some CLI related functions required by L<App::DBBrowser>, L<Term::TablePrint> and L<App::YTDL>.
+This module provides some CLI related functions required by L<App::DBBrowser> and L<Term::TablePrint>.
 
 =head1 EXPORT
 
@@ -522,27 +526,40 @@ The second and optional argument is a reference to a hash. With this hash it can
 
 =item
 
-show_hidden
+back
 
-If enabled, hidden directories are added to the available directories.
+Set the string for the "back" menu entry.
+
+"back" menu entry: C<choose_a_directory> returns C<undef>.
+
+Default: "C<<>"
+
+=item
+
+clear_screen
+
+If enabled, the screen is cleared before the output.
 
 Values: 0,[1].
 
 =item
 
-layout
+confirm
 
-See the option I<layout> in L<Term::Choose>
+Set the string for the "confirm" menu entry.
 
-Values: 0,[1],2,3.
+"confirm" menu entry: C<choose_a_directory> returns the chosen directory.
+
+Default: "C<.>"
 
 =item
 
-order
+enchanted
 
-If set to 1 the items are ordered vertically else they are ordered horizontally.
+If set to 1 the default cursor position is on the "up" menu entry. If the directory name remains the same after an
+user input the default cursor position changes to "back".
 
-This option has no meaning if I<layout> is set to 3.
+If set to 0 the default cursor position is on the "back" menu entry.
 
 Values: 0,[1].
 
@@ -556,11 +573,11 @@ Values: [0],1,2.
 
 =item
 
-clear_screen
+layout
 
-If enabled, the screen is cleared before the output.
+See the option I<layout> in L<Term::Choose>
 
-Values: 0,[1].
+Values: 0,[1],2,3.
 
 =item
 
@@ -569,6 +586,34 @@ mouse
 Set the mouse mode.
 
 Values: [0],1,2,3,4.
+
+=item
+
+order
+
+If set to 1 the items are ordered vertically else they are ordered horizontally.
+
+This option has no meaning if I<layout> is set to 3.
+
+Values: 0,[1].
+
+=item
+
+show_hidden
+
+If enabled, hidden directories are added to the available directories.
+
+Values: 0,[1].
+
+=item
+
+up
+
+Set the string for the "up" menu entry.
+
+"up" menu entry: C<choose_a_directory> moves to the parent directory if it is not already in the root directory.
+
+Default: "C<..>"
 
 =back
 
@@ -590,6 +635,14 @@ The second and optional argument is a reference to a hash with these keys (optio
 
 =item
 
+clear_screen
+
+If enabled, the screen is cleared before the output.
+
+Values: 0,[1].
+
+=item
+
 current
 
 The current value. If set two prompt lines are displayed - one for the current number and one for the new number.
@@ -604,27 +657,19 @@ Default: empty string ("");
 
 =item
 
-thsd_sep
-
-Sets the thousands separator.
-
-Default: comma (,).
-
-=item
-
-clear_screen
-
-If enabled, the screen is cleared before the output.
-
-Values: 0,[1].
-
-=item
-
 mouse
 
 Set the mouse mode.
 
 Values: [0],1,2,3,4.
+
+=item
+
+thsd_sep
+
+Sets the thousands separator.
+
+Default: comma (,).
 
 =back
 
@@ -642,6 +687,14 @@ The optional second argument is a hash reference. The following options are avai
 
 =item
 
+clear_screen
+
+If enabled, the screen is cleared before the output.
+
+Values: 0,[1].
+
+=item
+
 current
 
 This option expects as its value the current subset (a reference to an array). If set two prompt lines are displayed -
@@ -651,11 +704,27 @@ The subset is returned as an array reference.
 
 =item
 
+justify
+
+Elements in columns are left justified if set to 0, right justified if set to 1 and centered if set to 2.
+
+Values: [0],1,2.
+
+=item
+
 layout
 
 See the option I<layout> in L<Term::Choose>.
 
 Values: 0,1,2,[3].
+
+=item
+
+mouse
+
+Set the mouse mode.
+
+Values: [0],1,2,3,4.
 
 =item
 
@@ -669,36 +738,12 @@ Values: 0,[1].
 
 =item
 
-justify
-
-Elements in columns are left justified if set to 0, right justified if set to 1 and centered if set to 2.
-
-Values: [0],1,2.
-
-=item
-
 prefix
 
 I<prefix> expects as its value a string. This string is put in front of the elements of the available list before
 printing. The chosen elements are returned without this I<prefix>.
 
 The default value is "- " if the I<layout> is 3 else the default is the empty string ("").
-
-=item
-
-clear_screen
-
-If enabled, the screen is cleared before the output.
-
-Values: 0,[1].
-
-=item
-
-mouse
-
-Set the mouse mode.
-
-Values: [0],1,2,3,4.
 
 =back
 
@@ -761,17 +806,17 @@ The optional third argument is a reference to a hash. The keys are
 
 =item
 
-in_place
+clear_screen
 
-If enabled the configuration hash (second argument) is edited in place.
+If enabled, the screen is cleared before the output.
 
 Values: 0,[1].
 
 =item
 
-clear_screen
+in_place
 
-If enabled, the screen is cleared before the output.
+If enabled the configuration hash (second argument) is edited in place.
 
 Values: 0,[1].
 
@@ -838,12 +883,26 @@ The optional second argument is also a hash reference which allows to set the fo
 
 =item
 
+clear_screen
+
+If enabled, the screen is cleared before the output.
+
+Values: 0,[1].
+
+=item
+
 keys
 
 The keys which should be printed in the given order. The keys are passed with an array reference. Keys which don't exist
 are ignored. If not set I<keys> defaults to
 
     [ sort keys %$hash ]
+
+=item
+
+left_margin
+
+I<left_margin> is added to I<len_key>. It defaults to 1.
 
 =item
 
@@ -864,9 +923,11 @@ terminal width is used instead.
 
 =item
 
-left_margin
+mouse
 
-I<left_margin> is added to I<len_key>. It defaults to 1.
+Set the mouse mode.
+
+Values: [0],1,2,3,4.
 
 =item
 
@@ -874,22 +935,6 @@ right_margin
 
 The I<right_margin> is subtracted from I<maxcols> if I<maxcols> is the maximum terminal width. The default value is
 2.
-
-=item
-
-clear_screen
-
-If enabled, the screen is cleared before the output.
-
-Values: 0,[1].
-
-=item
-
-mouse
-
-Set the mouse mode.
-
-Values: [0],1,2,3,4.
 
 =back
 

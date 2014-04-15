@@ -1,6 +1,10 @@
 Revision history for Term::Choose::Util
 
 
+0.005   2014-04-15
+        - Update "choose_a_directory".
+        - Update documentation.
+
 0.004   2014-04-09
         - Update options.
         - Update function "insert_sep".
