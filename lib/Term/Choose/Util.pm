@@ -306,6 +306,7 @@ sub insert_sep {
     $separator //= ',';
     return $number if $number =~ /\Q$separator\E/;
     $number =~ s/(^[-+]?\d+?(?=(?>(?:\d{3})+)(?!\d))|\G\d{3}(?=\d))/$1$separator/g;
+    # http://perldoc.perl.org/perlfaq5.html#How-can-I-output-my-numbers-with-commas-added?
     return $number;
 }
 
@@ -333,6 +334,8 @@ sub print_hash {
     my $maxcols      = $opt->{maxcols};
     my $clear        = $opt->{clear_screen} // 1;
     my $mouse        = $opt->{mouse}        // 0;
+    my $prompt       = $opt->{prompt}       // ( defined $opt->{preface} ? '' : 'Close with ENTER' );
+    my $preface      = $opt->{preface};
     #-----------------------------------------------------------------#
     my $line_fold    = $opt->{lf}           // { Charset => 'utf-8', Newline => "\n",
                                                  OutputCharset => '_UNICODE_', Urgent => 'FORCE' };
@@ -349,21 +352,28 @@ sub print_hash {
     }
     my $lf = Text::LineFold->new( %$line_fold, ColMax => $maxcols );
     my @vals = ();
+    if ( defined $preface ) {
+        for my $line ( split "\n", $preface ) {
+            push @vals, split "\n", $lf->fold( $line, 'Plain' );
+        }
+    }
     for my $key ( @$keys ) {
         next if ! exists $hash->{$key};
         my $pr_key = sprintf "%*.*s%*s", $len_key, $len_key, $key, $len_sep, $sep;
         my $text = $lf->fold(
             '' , ' ' x ( $len_key + $len_sep ),
-            $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : $hash->{$key} )
+            $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : $hash->{$key} // '' )
         );
         $text =~ s/\R+\z//;
         for my $val ( split /\R+/, $text ) {
             push @vals, $val;
         }
     }
+    return            @vals if         wantarray;
+    return join "\n", @vals if defined wantarray;
     choose(
         [ @vals ],
-        { layout => 3, justify => 0, mouse => $mouse, clear_screen => $clear }
+        { prompt => $prompt, layout => 3, justify => 0, mouse => $mouse, clear_screen => $clear }
     );
 }
 
@@ -871,9 +881,13 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 
 =head2 print_hash
 
-Prints a simple hash to STDOUT (or STDERR if the output is redirected). Nested hashes are not supported. If the hash
-has more keys than the terminal rows the output is divided up on several pages. The user can scroll through the single
-lines of the hash. The output of the hash is closed when the user presses C<Return>.
+Prints a simple hash to STDOUT (or STDERR if the output is redirected) if called in void context. In scalar context
+I<print_hash> returns the formated hash as a string; in list context it is returned a list - the formated hash split up
+on newlines.
+
+Nested hashes are not supported. If the hash has more keys than the terminal rows the output is divided up on several
+pages. The user can scroll through the single lines of the hash. In void context the output of the hash is closed when
+the user presses C<Return>.
 
 The first argument is the hash to be printed passed as a reference.
 
@@ -928,6 +942,20 @@ mouse
 Set the mouse mode.
 
 Values: [0],1,2,3,4.
+
+=item
+
+preface
+
+With I<preface> it can be passed a string which is printed above the hash.
+
+Default: undefined.
+
+prompt
+
+Sets the prompt string
+
+If I<preface> is defined, I<prompt> defaults to the empty string else the default is 'Close with ENTER'.
 
 =item
 
