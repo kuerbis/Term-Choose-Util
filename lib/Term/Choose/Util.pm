@@ -889,6 +889,8 @@ Nested hashes are not supported. If the hash has more keys than the terminal row
 pages. The user can scroll through the single lines of the hash. In void context the output of the hash is closed when
 the user presses C<Return>.
 
+Empty strings are used instead of undefined hash values.
+
 The first argument is the hash to be printed passed as a reference.
 
 The optional second argument is also a hash reference which allows to set the following options:
