@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.10.1;
 
-our $VERSION = '0.005';
+our $VERSION = '0.006';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_number choose_a_subset choose_multi insert_sep
                      length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
@@ -497,7 +497,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.005
+Version 0.006
 
 =cut
 
@@ -882,7 +882,7 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 =head2 print_hash
 
 Prints a simple hash to STDOUT (or STDERR if the output is redirected) if called in void context. In scalar context
-I<print_hash> returns the formated hash as a string; in list context it is returned a list - the formated hash split up
+I<print_hash> returns the formatted hash as a string; in list context it is returned a list - the formatted hash split up
 on newlines.
 
 Nested hashes are not supported. If the hash has more keys than the terminal rows the output is divided up on several
