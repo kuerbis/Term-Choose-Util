@@ -369,7 +369,6 @@ sub print_hash {
             push @vals, $val;
         }
     }
-    return            @vals if         wantarray;
     return join "\n", @vals if defined wantarray;
     choose(
         [ @vals ],
@@ -881,9 +880,8 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 
 =head2 print_hash
 
-Prints a simple hash to STDOUT (or STDERR if the output is redirected) if called in void context. In scalar context
-I<print_hash> returns the formatted hash as a string; in list context it is returned a list - the formatted hash split up
-on newlines.
+Prints a simple hash to STDOUT (or to STDERR if the output is redirected) if called in void context. If not called in
+void context, I<print_hash> returns the formatted hash as a string.
 
 Nested hashes are not supported. If the hash has more keys than the terminal rows the output is divided up on several
 pages. The user can scroll through the single lines of the hash. In void context the output of the hash is closed when

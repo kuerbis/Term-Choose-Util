@@ -1,6 +1,10 @@
 Revision history for Term::Choose::Util
 
 
+0.007   2014-06-15
+        - Simplified the context sensitive behavior of "print_hash".
+        - Update documentation.
+
 0.006   2014-06-14
         - Added the option "preface" to the function "print_hash".
         - The behavior of "print_hash" is now context sensitive.
