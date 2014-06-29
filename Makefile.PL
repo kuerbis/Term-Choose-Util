@@ -41,6 +41,7 @@ WriteMakefile(
         'Encode::Locale'        => 0,
         'Exporter'              => 0,
         'File::Basename'        => 0,
+        'File::HomeDir'         => 0,
         'File::Spec::Functions' => 0,
         'List::Util'            => 0,
         'Term::Choose'          => '1.105',

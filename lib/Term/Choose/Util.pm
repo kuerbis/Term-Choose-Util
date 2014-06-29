@@ -2,11 +2,11 @@ package Term::Choose::Util;
 
 use warnings;
 use strict;
-use 5.10.1;
+use 5.010001;
 
-our $VERSION = '0.006';
+our $VERSION = '0.008';
 use Exporter 'import';
-our @EXPORT_OK = qw( choose_a_directory choose_a_number choose_a_subset choose_multi insert_sep
+our @EXPORT_OK = qw( choose_a_directory choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep
                      length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
 
 use Cwd                   qw( realpath );
@@ -15,11 +15,12 @@ use File::Basename        qw( dirname );
 use File::Spec::Functions qw( catdir );
 use List::Util            qw( sum );
 
-use Encode::Locale;
-use Term::Choose  qw( choose );
-use Term::ReadKey qw( GetTerminalSize ReadKey ReadMode );
-use Text::LineFold;
-use Unicode::GCString;
+use Encode::Locale    qw();
+use File::HomeDir     qw();
+use Term::Choose      qw( choose );
+use Term::ReadKey     qw( GetTerminalSize ReadKey ReadMode );
+use Text::LineFold    qw();
+use Unicode::GCString qw();
 
 use if $^O eq 'MSWin32', 'Win32::Console';
 use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
@@ -40,8 +41,9 @@ sub choose_a_directory {
     my $show_hidden = $opt->{show_hidden}  // 1;
     my $clear       = $opt->{clear_screen} // 1;
     my $mouse       = $opt->{mouse}        // 0;
-    my $layout      = $opt->{layout}       // 3;
+    my $layout      = $opt->{layout}       // 1;
     my $order       = $opt->{order}        // 1;
+    #                 $opt->{prompt};
     my $justify     = $opt->{justify}      // 0;
     my $enchanted   = $opt->{enchanted }   // 1;
     my $confirm     = $opt->{confirm}      // '.';
@@ -68,8 +70,14 @@ sub choose_a_directory {
             push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
         }
         closedir $dh;
-        my $prompt = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
-        $prompt   .= '    New dir: "' . decode( 'locale_fs', $dir  ) . '"' . "\n\n";
+        my $prompt = $opt->{prompt};
+        if ( defined $prompt ) {
+            $prompt .= 'Dir: ' . $dir;  ###
+        }
+        else {
+            $prompt  = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
+            $prompt .= '    New dir: "' . decode( 'locale_fs', $dir  ) . '"' . "\n\n";
+        }
         my $choice = choose(
             [ undef, $confirm, $up, sort( @dirs ) ],
             { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
@@ -80,6 +88,147 @@ sub choose_a_directory {
         $choice = encode( 'locale_fs', $choice );
         $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, $choice );
         $default = $previous eq $dir ? 0 : $enchanted  ? 2 : 0;
+        $previous = $dir;
+    }
+}
+
+
+sub choose_a_dir {
+    my ( $opt ) = @_;
+    $opt //= {};
+    my $dir         = $opt->{dir}        // File::HomeDir->my_home();
+    my $show_hidden = $opt->{show_hidden}  // 1;
+    my $clear       = $opt->{clear_screen} // 1;
+    my $mouse       = $opt->{mouse}        // 0;
+    my $layout      = $opt->{layout}       // 1;
+    my $order       = $opt->{order}        // 1;
+    #                 $opt->{prompt};            ###
+    my $justify     = $opt->{justify}      // 0;
+    my $enchanted   = $opt->{enchanted }   // 1;
+    my $confirm     = $opt->{confirm}      // '.';
+    my $up          = $opt->{up}           // '..';
+    my $back        = $opt->{back}         // '<';
+    $dir            = realpath $dir;
+    my $curr        = $dir;
+    my $previous    = $dir;
+    my @pre         = ( undef, $confirm, $up );
+    my $default     = $enchanted  ? $#pre : 0;
+
+    while ( 1 ) {
+        my ( $dh, @dirs );
+        if ( ! eval {
+            opendir( $dh, $dir ) or die $!;
+            1 }
+        ) {
+            print "$@";
+            choose( [ 'Press Enter:' ], { prompt => '' } );
+            $dir = dirname $dir;
+            next;
+        }
+        while ( my $file = readdir $dh ) {
+            next if $file =~ /^\.\.?\z/;
+            next if $file =~ /^\./ && ! $show_hidden;
+            push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
+        }
+        closedir $dh;
+        my $prompt = $opt->{prompt};
+        if ( defined $prompt ) {
+            $prompt .= 'Dir: ' . $dir;  ###
+        }
+        else {
+            $prompt  = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
+            $prompt .= '    New dir: "' . decode( 'locale_fs', $dir  ) . '"' . "\n\n";
+        }
+        my $choice = choose(
+            [ @pre, sort( @dirs ) ],
+            { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
+              justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
+        );
+        return if ! defined $choice;
+        return $previous if $choice eq $confirm;
+        $choice = encode( 'locale_fs', $choice );
+        $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, $choice );
+        $default = $previous eq $dir ? 0 : $enchanted  ? $#pre : 0;
+        $previous = $dir;
+    }
+}
+
+
+sub choose_dirs {
+    my ( $opt ) = @_;
+    $opt //= {};
+    my $start_dir   = $opt->{dir}        // File::HomeDir->my_home();;
+    my $show_hidden = $opt->{show_hidden}  // 1;
+    my $current     = $opt->{current};
+    my $clear       = $opt->{clear_screen} // 1;
+    my $mouse       = $opt->{mouse}        // 0;
+    my $layout      = $opt->{layout}       // 1;
+    my $order       = $opt->{order}        // 1;
+    my $justify     = $opt->{justify}      // 0;
+    my $enchanted   = $opt->{enchanted}    // 1;
+    #--------------------------------------#
+    my $confirm     = $opt->{confirm}      // ' = ';
+    my $back        = $opt->{back}         // ' < ';
+    my $add_dir     = $opt->{add_dir}      // ' . ';
+    my $up          = $opt->{up}           // ' .. ';
+    my $key_cur     = 'Current: ';
+    my $key_new     = '    New: ';
+    my $gcs_cur     = Unicode::GCString->new( $key_cur );
+    my $gcs_new     = Unicode::GCString->new( $key_new );
+    my $len_key     = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
+    my $key_cwd     = 'pwd: ';
+    my $gcs_key_cwd = Unicode::GCString->new( $key_cwd );
+    my $len_key_cwd = $gcs_key_cwd->columns;
+    my $new         = [];
+    my $dir         = realpath $start_dir;
+    my $previous    = $dir;
+    my @pre         = ( undef, $confirm, $add_dir, $up );
+    my $default     = $enchanted  ? $#pre : 0;
+
+    while ( 1 ) {
+        my ( $dh, @dirs );
+        if ( ! eval {
+            opendir( $dh, $dir ) or die $!;
+            1 }
+        ) {
+            print "$@";
+            choose( [ 'Press Enter:' ], { prompt => '' } );
+            $dir = dirname $dir;
+            next;
+        }
+        while ( my $file = readdir $dh ) {
+            next if $file =~ /^\.\.?\z/;
+            next if $file =~ /^\./ && ! $show_hidden;
+            push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
+        }
+        closedir $dh;
+        my $lf = Text::LineFold->new( Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_',
+                                        Urgent => 'FORCE', ColMax => ( term_size() )[0] );
+        my $prompt = ''; # = $opt->{prompt};
+        $prompt .= $key_cur . join( ', ', map { "\"$_\"" } @$current ) . "\n"   if defined $current;
+        $prompt .= $key_new . join( ', ', map { "\"$_\"" } @$new )              . "\n\n";
+        $prompt = $lf->fold( '' , ' ' x $len_key, $prompt );
+        $prompt .= $lf->fold( '' , ' ' x $len_key_cwd, $key_cwd . decode( 'locale_fs', $previous ) );
+        my $choice = choose(
+            [ @pre, sort( @dirs ) ],
+            { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
+              justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
+        );
+        if ( ! defined $choice ) {
+            return if ! @$new;
+            $new = [];
+            next;
+        }
+        $default = $enchanted  ? $#pre : 0;
+        if ( $choice eq $confirm ) {
+            return $new;
+        }
+        elsif ( $choice eq $add_dir ) {
+            push @$new, $previous;
+            next;
+        }
+        $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, encode 'locale_fs', $choice );
+        $default = 0 if $previous eq $dir;
         $previous = $dir;
     }
 }
@@ -229,8 +378,7 @@ sub choose_a_subset {
         if ( $choice[0] eq $confirm ) {
             shift @choice;
             push @$new, map { s/^\Q$prefix\E//; $_ } @choice if @choice;
-            return $new if @$new;
-            return;
+            return $new;
         }
         push @$new, map { s/^\Q$prefix\E//; $_ } @choice;
     }
@@ -400,6 +548,9 @@ sub unicode_sprintf {
             if ( $avail_width < ( $cols += $gc->columns ) ) {
                 my $ret = $gcs->substr( 0, $gcs->pos - 1 );
                 $gcs->pos( $pos );
+                if ( $ret->columns() < $avail_width ) {
+                    return $right_justify ? ' ' . $ret->as_string : ' ' . $ret->as_string;
+                }
                 return $ret->as_string;
             }
         }
@@ -496,7 +647,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.006
+Version 0.008
 
 =cut
 
@@ -518,9 +669,9 @@ Values in brackets are default values.
 
 Unknown option names are ignored.
 
-To get information about the different I<mouse> modes see option I<mouse> in L<Term::Choose>.
+=head2 choose_a_directory DEPRECATED
 
-=head2 choose_a_directory
+Use C<choose_a_dir> instead - C<choose_a_directory> will be removed.
 
     $chosen_directory = choose_a_directory( $dir, { layout => 1 } )
 
@@ -547,7 +698,7 @@ Default: "C<<>"
 
 clear_screen
 
-If enabled, the screen is cleared before the output.
+  enabled, the screen is cleared before the output.
 
 Values: 0,[1].
 
@@ -565,10 +716,10 @@ Default: "C<.>"
 
 enchanted
 
-If set to 1 the default cursor position is on the "up" menu entry. If the directory name remains the same after an
-user input the default cursor position changes to "back".
+If set to 1, the default cursor position is on the "up" menu entry. If the directory name remains the same after an
+user input, the default cursor position changes to "back".
 
-If set to 0 the default cursor position is on the "back" menu entry.
+If set to 0, the default cursor position is on the "back" menu entry.
 
 Values: 0,[1].
 
@@ -600,7 +751,7 @@ Values: [0],1,2,3,4.
 
 order
 
-If set to 1 the items are ordered vertically else they are ordered horizontally.
+If set to 1, the items are ordered vertically else they are ordered horizontally.
 
 This option has no meaning if I<layout> is set to 3.
 
@@ -623,6 +774,250 @@ Set the string for the "up" menu entry.
 "up" menu entry: C<choose_a_directory> moves to the parent directory if it is not already in the root directory.
 
 Default: "C<..>"
+
+=back
+
+=head2 choose_a_dir
+
+    $chosen_directory = choose_a_dir( { layout => 1, ... } )
+
+With C<choose_a_dir> the user can browse through the directory tree (as far as the granted rights permit it) and
+choose a directory which is returned.
+
+To move around in the directory tree:
+
+- select a directory and press C<Return> to enter in the selected directory.
+
+- choose the "up"-menu-entry ("C<..>") to move upwards.
+
+To return the current working-directory as the chosen directory choose the "confirm"-menu-entry (defaults to the "C<.>"
+string).
+
+The "back"-menu-entry ("C<<>") causes C<choose_a_dir> to return nothing.
+
+As an argument it can be passed a reference to a hash. With this hash the user can set the different options:
+
+=over
+
+=item
+
+back
+
+Set the string for the "back" menu entry.
+
+Default: "C<<>"
+
+=item
+
+clear_screen
+
+If enabled, the screen is cleared before the output.
+
+Values: 0,[1].
+
+=item
+
+confirm
+
+Set the string for the "confirm" menu entry.
+
+Default: "C<.>"
+
+=item
+
+dir
+
+Set the starting point directory. Defaults to the home directory or the current working directory if the home directory
+cannot be found out.
+
+=item
+
+enchanted
+
+If set to 1, the default cursor position is on the "up" menu entry. If the directory name remains the same after an
+user input, the default cursor position changes to "back".
+
+If set to 0, the default cursor position is on the "back" menu entry.
+
+Values: 0,[1].
+
+=item
+
+justify
+
+Elements in columns are left justified if set to 0, right justified if set to 1 and centered if set to 2.
+
+Values: [0],1,2.
+
+=item
+
+layout
+
+See the option I<layout> in L<Term::Choose>
+
+Values: 0,[1],2,3.
+
+=item
+
+mouse
+
+See the option I<mouse> in L<Term::Choose>
+
+Values: [0],1,2,3,4.
+
+=item
+
+order
+
+If set to 1, the items are ordered vertically else they are ordered horizontally.
+
+This option has no meaning if I<layout> is set to 3.
+
+Values: 0,[1].
+
+=item
+
+show_hidden
+
+If enabled, hidden directories are added to the available directories.
+
+Values: 0,[1].
+
+=item
+
+up
+
+Set the string for the "up" menu entry.
+
+Default: "C<..>"
+
+=back
+
+=head2 choose_dirs
+
+    @chosen_directories = choose_dirs( { layout => 1, ... } )
+
+With C<choose_dirs> the user can browse through the directory tree (as far as the granted rights permit it) and
+choose directories.
+
+To move around in the directory tree:
+
+- select a directory and press C<Return> to enter in the selected directory.
+
+- choose the "up"-menu-entry ( "C< .. >" ) to move upwards.
+
+To add the current working-directory to the list of chosen directories choose the "add_dir"-menu-entry - the default
+"add_dir"-menu-entry string is "C< . >".
+
+To return (a reference to) the chosen list of directories select the "confirm"-menu-entry which defaults to the "C< = >"
+string.
+
+The "back"-menu-entry ( "C< < >" ) resets the list of chosen directories if any. If the list of chosen directories is
+empty, the "back"-menu-entryelse causes C<choose_dirs> to return nothing.
+
+As an argument it can be passed a reference to a hash. With this hash the user can set the different options:
+
+=over
+
+=item
+
+add_dir
+
+Set the string for the "add_dir" menu entry.
+
+Default: "C< . >"
+
+=item
+
+back
+
+Set the string for the "back" menu entry.
+
+Default: "C< < >"
+
+=item
+
+clear_screen
+
+If enabled, the screen is cleared before the output.
+
+Values: 0,[1].
+
+=item
+
+confirm
+
+Set the string for the "confirm" menu entry.
+
+Default: "C< = >"
+
+=item
+
+dir
+
+Set the starting point directory. Defaults to the home directory or the current working directory if the home directory
+cannot be found out.
+
+=item
+
+enchanted
+
+If set to 1, the default cursor position is on the "up" menu entry. If the pwd-directory name remains the same after an
+user input, the default cursor position changes to "back".
+
+If set to 0, the default cursor position is on the "back" menu entry.
+
+Values: 0,[1].
+
+=item
+
+justify
+
+Elements in columns are left justified if set to 0, right justified if set to 1 and centered if set to 2.
+
+Values: [0],1,2.
+
+=item
+
+layout
+
+See the option I<layout> in L<Term::Choose>
+
+Values: 0,[1],2,3.
+
+=item
+
+mouse
+
+See the option I<mouse> in L<Term::Choose>
+
+Values: [0],1,2,3,4.
+
+=item
+
+order
+
+If set to 1, the items are ordered vertically else they are ordered horizontally.
+
+This option has no meaning if I<layout> is set to 3.
+
+Values: 0,[1].
+
+=item
+
+show_hidden
+
+If enabled, hidden directories are added to the available directories.
+
+Values: 0,[1].
+
+=item
+
+up
+
+Set the string for the "up" menu entry.
+
+Default: "C< .. >"
 
 =back
 
@@ -654,7 +1049,7 @@ Values: 0,[1].
 
 current
 
-The current value. If set two prompt lines are displayed - one for the current number and one for the new number.
+The current value. If set, two prompt lines are displayed - one for the current number and one for the new number.
 
 =item
 
@@ -668,7 +1063,7 @@ Default: empty string ("");
 
 mouse
 
-Set the mouse mode.
+See the option I<mouse> in L<Term::Choose>
 
 Values: [0],1,2,3,4.
 
@@ -706,7 +1101,7 @@ Values: 0,[1].
 
 current
 
-This option expects as its value the current subset (a reference to an array). If set two prompt lines are displayed -
+This option expects as its value the current subset (a reference to an array). If set, two prompt lines are displayed -
 one for the current subset and one for the new subset.
 
 The subset is returned as an array reference.
@@ -731,7 +1126,7 @@ Values: 0,1,2,[3].
 
 mouse
 
-Set the mouse mode.
+See the option I<mouse> in L<Term::Choose>
 
 Values: [0],1,2,3,4.
 
@@ -739,7 +1134,7 @@ Values: [0],1,2,3,4.
 
 order
 
-If set to 1 the items are ordered vertically else they are ordered horizontally.
+If set to 1, the items are ordered vertically else they are ordered horizontally.
 
 This option has no meaning if I<layout> is set to 3.
 
@@ -825,7 +1220,7 @@ Values: 0,[1].
 
 in_place
 
-If enabled the configuration hash (second argument) is edited in place.
+If enabled, the configuration hash (second argument) is edited in place.
 
 Values: 0,[1].
 
@@ -833,17 +1228,17 @@ Values: 0,[1].
 
 mouse
 
-Set the mouse mode.
+See the option I<mouse> in L<Term::Choose>
 
 Values: [0],1,2,3,4.
 
 =back
 
-When C<choose_multi> is called it displays for each array entry a row with the prompt string and the current value.
-It is possible to scroll through the rows. If a row is selected the set and displayed value changes to the next. If the
-end of the list of the values is reached it begins from the beginning of the list.
+When C<choose_multi> is called, it displays for each array entry a row with the prompt string and the current value.
+It is possible to scroll through the rows. If a row is selected, the set and displayed value changes to the next. If the
+end of the list of the values is reached, it begins from the beginning of the list.
 
-C<choose_multi> returns nothing if no changes are made. If the user has changed values and C<in_place> is set to 1
+C<choose_multi> returns nothing if no changes are made. If the user has changed values and C<in_place> is set to 1,
 C<choose_multi> modifies the hash passed as the second argument in place and returns 1. With the option C<in_place>
 set to 0 C<choose_multi> does no in place modifications but modifies a copy of the configuration hash. A reference to
 that modified copy is then returned.
@@ -854,9 +1249,9 @@ that modified copy is then returned.
 
 C<insert_sep> inserts thousands separators into the number and returns the number.
 
-If the first argument is not defined it is returned nothing.
+If the first argument is not defined, it is returned nothing.
 
-If the first argument contains one or more characters equal to the thousands separator C<insert_sep> returns the string
+If the first argument contains one or more characters equal to the thousands separator, C<insert_sep> returns the string
 unchanged.
 
 As a second argument it can be passed a character which will be used as the thousands separator.
@@ -883,7 +1278,7 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 Prints a simple hash to STDOUT (or to STDERR if the output is redirected) if called in void context. If not called in
 void context, I<print_hash> returns the formatted hash as a string.
 
-Nested hashes are not supported. If the hash has more keys than the terminal rows the output is divided up on several
+Nested hashes are not supported. If the hash has more keys than the terminal rows, the output is divided up on several
 pages. The user can scroll through the single lines of the hash. In void context the output of the hash is closed when
 the user presses C<Return>.
 
@@ -908,7 +1303,7 @@ Values: 0,[1].
 keys
 
 The keys which should be printed in the given order. The keys are passed with an array reference. Keys which don't exist
-are ignored. If not set I<keys> defaults to
+are ignored. If not set, I<keys> defaults to
 
     [ sort keys %$hash ]
 
@@ -932,14 +1327,14 @@ available width for the values is at least one third of the total available widt
 
 maxcols
 
-The maximum width of the output. If not set or set to 0 or set to a value higher than the terminal width the maximum
+The maximum width of the output. If not set or set to 0 or set to a value higher than the terminal width, the maximum
 terminal width is used instead.
 
 =item
 
 mouse
 
-Set the mouse mode.
+See the option I<mouse> in L<Term::Choose>
 
 Values: [0],1,2,3,4.
 
@@ -950,6 +1345,8 @@ preface
 With I<preface> it can be passed a string which is printed above the hash.
 
 Default: undefined.
+
+=item
 
 prompt
 
@@ -972,7 +1369,7 @@ C<term_size> returns the current terminal width and the current terminal height.
 
     ( $width, $height ) = term_size()
 
-If the OS is MSWin32 C<Size> from L<Win32::Console> is used to get the terminal width and the terminal height else
+If the OS is MSWin32, C<Size> from L<Win32::Console> is used to get the terminal width and the terminal height else
 C<GetTerminalSize> form L<Term::ReadKey> is used.
 
 On MSWin32 OS, if it is written to the last column on the screen the cursor goes to the first column of the next line.
@@ -986,8 +1383,8 @@ returning the width if the OS is MSWin32.
 C<unicode_sprintf> expects 2 or 3 arguments: the first argument is a decoded string, the second argument is the
 available width and the third and optional argument tells how to pad the string.
 
-If the length of the string is greater than the available width it is truncated to the available width. If the string is
-equal to the available width nothing is done with the string. If the string length is less than the available width,
+If the length of the string is greater than the available width, it is truncated to the available width. If the string
+is equal to the available width, nothing is done with the string. If the string length is less than the available width,
 C<unicode_sprintf> adds spaces to the string until the string length is equal to the available width. If the third
 argument is set to a true value, the spaces are added at the beginning of the string else they are added at the end of
 the string.
@@ -1000,8 +1397,8 @@ I<Length> or I<width> means here number of print columns as returned by the C<co
 
 The first argument is a decoded string, the second argument is the length.
 
-If the string is longer than passed length it is trimmed to that length at the right site and returned else the string
-is returned as it is.
+If the string is longer than the passed length, it is trimmed to that length at the right site and returned else the
+string is returned as it is.
 
 I<Length> means here number of print columns as returned by the C<columns> method from  L<Unicode::GCString>.
 

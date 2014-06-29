@@ -17,3 +17,5 @@ Kiem
 Matthäus
 maxcols
 stackoverflow
+pwd
+dir

@@ -1,6 +1,12 @@
 Revision history for Term::Choose::Util
 
 
+0.008   2014-06-29
+        - "choose_a_subset" returns an empty list, if the chosen list is empty and "confirm" is pressed.
+        - New function "choose_dirs".
+        - Update "unicode_sprintf".
+        - Update documentation.
+
 0.007   2014-06-15
         - Simplified the context sensitive behavior of "print_hash".
         - Update documentation.
