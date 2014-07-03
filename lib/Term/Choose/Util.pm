@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.008';
+our $VERSION = '0.009';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep
                      length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
@@ -590,8 +590,9 @@ sub unicode_trim {
 
 sub util_readline {
     my ( $prompt, $opt ) = @_;
-    $opt //= {};
-    my $str = '';
+    $prompt //= '';
+    $opt    //= {};
+    my $str = $opt->{default} // '';
     local $| = 1;
     print SAVE_CURSOR_POSITION;
     _print_readline( $prompt, $str, $opt );
@@ -647,7 +648,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.008
+Version 0.009
 
 =cut
 
@@ -1330,6 +1331,8 @@ maxcols
 The maximum width of the output. If not set or set to 0 or set to a value higher than the terminal width, the maximum
 terminal width is used instead.
 
+Default: undefined.
+
 =item
 
 mouse
@@ -1408,7 +1411,7 @@ C<util_readline> reads a line.
 
     $string = util_readline( $prompt, { no_echo => 0 } )
 
-The fist argument is the prompt string. The optional second argument is a reference to a hash. The only key/option is
+The fist argument is the prompt string. The optional second argument is a reference to a hash. The two keys/options are
 
 =over
 
@@ -1417,6 +1420,12 @@ The fist argument is the prompt string. The optional second argument is a refere
 no_echo
 
 Values: [0],1.
+
+=item
+
+default
+
+Set a default value.
 
 =back
 
