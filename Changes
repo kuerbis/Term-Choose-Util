@@ -1,6 +1,11 @@
 Revision history for Term::Choose::Util
 
 
+0.010   2014-07-09
+        - Update function "util_readline".
+        - New option for "choose_a_subset".
+        - Update documentation.
+
 0.009   2014-07-03
         - New option "default" for the "util_readline" function.
         - Update documentation.

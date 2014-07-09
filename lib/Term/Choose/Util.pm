@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.009';
+our $VERSION = '0.010';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep
                      length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
@@ -28,6 +28,7 @@ use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 END { ReadMode 0 }
 
 sub BSPACE                  () { 0x7f }
+sub UP                      () { "\e[A" }
 sub CLEAR_TO_END_OF_SCREEN  () { "\e[0J" }
 sub CLEAR_SCREEN            () { "\e[1;1H\e[0J" }
 sub SAVE_CURSOR_POSITION    () { "\e[s" }
@@ -262,7 +263,7 @@ sub choose_a_number {
     }
     my $confirm_tmp = sprintf "%-*s", $longest * 2 + $len_tab, $confirm;
     my $back_tmp    = sprintf "%-*s", $longest * 2 + $len_tab, $back;
-    my ( $term_width ) = term_size();
+    my $term_width = ( term_size() )[0];
     my $gcs_longest_range = Unicode::GCString->new( $choices_range[0] );
     if ( $gcs_longest_range->columns > $term_width ) {
         @choices_range = ();
@@ -341,14 +342,14 @@ sub choose_a_subset {
     #--------------------------------------#
     my $confirm = $opt->{confirm}      // 'CONFIRM';
     my $back    = $opt->{back}         // 'BACK';
+    my $key_cur = $opt->{p_curr}       // 'Current > ';
+    my $key_new = $opt->{p_new}        // '    New > ';
     if ( $prefix ) {
         my $gcs_prefix = Unicode::GCString->new( $prefix );
         my $len_prefix = $gcs_prefix->columns();
         $confirm = ( ' ' x $len_prefix ) . $confirm;
         $back    = ( ' ' x $len_prefix ) . $back;
     }
-    my $key_cur = 'Current > ';
-    my $key_new = '    New > ';
     my $gcs_cur = Unicode::GCString->new( $key_cur );
     my $gcs_new = Unicode::GCString->new( $key_new );
     my $len_key = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
@@ -592,43 +593,66 @@ sub util_readline {
     my ( $prompt, $opt ) = @_;
     $prompt //= '';
     $opt    //= {};
+    my $no_echo = $opt->{no_echo};
+    if ( $^O eq 'MSWin32' && $no_echo ) {
+        print $prompt;
+        ReadMode 'noecho';
+        my $passwd = <STDIN>;
+        chomp $passwd;
+        ReadMode 'normal';
+        return $passwd;
+    }
     my $str = $opt->{default} // '';
     local $| = 1;
-    print SAVE_CURSOR_POSITION;
-    _print_readline( $prompt, $str, $opt );
     ReadMode 'cbreak';
+    print SAVE_CURSOR_POSITION;
+    _print_readline( $prompt, $str, $no_echo );
+
     while ( 1 ) {
         my $key = ReadKey;
         return if ! defined $key;
         if ( $key eq "\cD" ) {
-            print "\n";
-            return;
+            if ( ! length $str ) {
+                print "\n";
+                return;
+            }
+            $str = '';
+            _print_readline( $prompt, $str, $no_echo );
+            next;
         }
         elsif ( $key eq "\n" or $key eq "\r" ) {
             print "\n";
             return $str;
         }
         elsif ( ord $key == BSPACE || $key eq "\cH" ) {
-            $str =~ s/\X\z// if $str; # ?
-            _print_readline( $prompt, $str, $opt );
+            if ( length $str ) {
+                $str =~ s/\X\z//; # ?
+             }
+            _print_readline( $prompt, $str, $no_echo );
             next;
         }
         elsif ( $key !~ /^\p{Print}\z/ ) {
-            _print_readline( $prompt, $str, $opt );
+            _print_readline( $prompt, $str, $no_echo );
             next;
         }
         $str .= $key;
-        _print_readline( $prompt, $str, $opt );
+        _print_readline( $prompt, $str, $no_echo );
     }
-    ReadMode 0;
+    ReadMode 'normal';
     return $str;
 }
 
 sub _print_readline {
-    my ( $prompt, $str, $opt ) = @_;
-    my $no_echo = $opt->{no_echo} // 0;
+    my ( $prompt, $str, $no_echo ) = @_;
+    my $gcs = Unicode::GCString->new( $prompt . $str );
+    my $up = int( $gcs->columns() / ( GetTerminalSize( \*STDOUT ) )[0] );
     print RESTORE_CURSOR_POSITION;
+    if ( $up ) {
+        print "\n" x $up;
+        print UP x $up;
+    }
     print CLEAR_TO_END_OF_SCREEN;
+    print SAVE_CURSOR_POSITION;
     print $prompt . ( $no_echo ? '' : $str );
 }
 
@@ -648,7 +672,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.009
+Version 0.010
 
 =cut
 
@@ -1429,10 +1453,9 @@ Set a default value.
 
 =back
 
-C<util_readline> returns C<undef> if C<Strg>-C<D> is pressed independently of whether the input buffer is empty or
-filled.
-
 It is not required to C<chomp> the returned string.
+
+On MSWin32 C<util_readline> supports only ASCII characters if I<no_echo> is disabled.
 
 =head1 REQUIREMENTS
 
