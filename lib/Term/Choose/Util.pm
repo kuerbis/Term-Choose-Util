@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.010';
+our $VERSION = '0.011';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep
                      length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
@@ -611,6 +611,7 @@ sub util_readline {
     while ( 1 ) {
         my $key = ReadKey;
         return if ! defined $key;
+        $key = decode( 'console_in', $key ) if $^O eq 'MSWin32';
         if ( $key eq "\cD" ) {
             if ( ! length $str ) {
                 print "\n";
@@ -672,7 +673,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.010
+Version 0.011
 
 =cut
 
@@ -1455,7 +1456,7 @@ Set a default value.
 
 It is not required to C<chomp> the returned string.
 
-On MSWin32 C<util_readline> supports only ASCII characters if I<no_echo> is disabled.
+On MSWin32 C<util_readline> supports only single-byte character sets if I<no_echo> is disabled.
 
 =head1 REQUIREMENTS
 
