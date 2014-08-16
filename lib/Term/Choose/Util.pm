@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.012';
+our $VERSION = '0.013';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim util_readline );
@@ -36,19 +36,18 @@ sub RESTORE_CURSOR_POSITION () { "\e[u" }
 sub choose_a_dir {
     my ( $opt ) = @_;
     $opt //= {};
-    my $dir         = $opt->{dir}        // File::HomeDir->my_home(); # encode( 'locale_fs', $opt->{dir} );
+    my $dir         = encode( 'locale_fs', $opt->{dir} ) // File::HomeDir->my_home();
     my $show_hidden = $opt->{show_hidden}  // 1;
     my $clear       = $opt->{clear_screen} // 1;
     my $mouse       = $opt->{mouse}        // 0;
     my $layout      = $opt->{layout}       // 1;
     my $order       = $opt->{order}        // 1;
-    #                 $opt->{prompt};            ###
+    #                 $opt->{prompt};            #
     my $justify     = $opt->{justify}      // 0;
     my $enchanted   = $opt->{enchanted }   // 1;
     my $confirm     = $opt->{confirm}      // '.';
     my $up          = $opt->{up}           // '..';
     my $back        = $opt->{back}         // '<';
-    $dir            = realpath $dir;
     my $curr        = $dir;
     my $previous    = $dir;
     my @pre         = ( undef, $confirm, $up );
@@ -73,7 +72,7 @@ sub choose_a_dir {
         closedir $dh;
         my $prompt = $opt->{prompt};
         if ( defined $prompt ) {
-            $prompt .= 'Dir: ' . decode( 'locale_fs', $dir );  ###
+            $prompt .= 'Dir: ' . decode( 'locale_fs', $dir );
         }
         else {
             $prompt  = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
@@ -97,7 +96,7 @@ sub choose_a_dir {
 sub choose_dirs {
     my ( $opt ) = @_;
     $opt //= {};
-    my $start_dir   = $opt->{dir}        // File::HomeDir->my_home();;
+    my $start_dir   = encode( 'locale_fs', $opt->{dir} ) // File::HomeDir->my_home();
     my $show_hidden = $opt->{show_hidden}  // 1;
     my $current     = $opt->{current};
     my $clear       = $opt->{clear_screen} // 1;
@@ -146,7 +145,7 @@ sub choose_dirs {
                                         Urgent => 'FORCE', ColMax => ( term_size() )[0] );
         my $prompt = ''; # = $opt->{prompt};
         $prompt .= $key_cur . join( ', ', map { "\"$_\"" } @$current ) . "\n"   if defined $current;
-        $prompt .= $key_new . join( ', ', map { "\"$_\"" } @$new )              . "\n\n";
+        $prompt .= $key_new . join( ', ', map { "\"$_\"" } @$new )     . "\n\n";
         $prompt = $lf->fold( '' , ' ' x $len_key, $prompt );
         $prompt .= $lf->fold( '' , ' ' x $len_key_cwd, $key_cwd . decode( 'locale_fs', $previous ) );
         my $choice = choose(
@@ -164,7 +163,7 @@ sub choose_dirs {
             return $new;
         }
         elsif ( $choice eq $add_dir ) {
-            push @$new, $previous;
+            push @$new, decode( 'locale_fs', $previous );
             next;
         }
         $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, encode 'locale_fs', $choice );
@@ -629,7 +628,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.012
+Version 0.013
 
 =cut
 

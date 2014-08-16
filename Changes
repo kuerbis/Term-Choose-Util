@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.013   2014-08-16
+        - Modified encoding/decoding in "choose_a_dir" and "choose_dirs".
+
 0.012   2014-08-16
         - "util_readline" deprecated.
         - Removed deprecated function "choose_a_directory".
