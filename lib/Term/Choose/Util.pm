@@ -4,10 +4,10 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.011';
+our $VERSION = '0.012';
 use Exporter 'import';
-our @EXPORT_OK = qw( choose_a_directory choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep
-                     length_longest print_hash term_size unicode_sprintf unicode_trim util_readline );
+our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
+                     print_hash term_size unicode_sprintf unicode_trim util_readline );
 
 use Cwd                   qw( realpath );
 use Encode                qw( decode encode );
@@ -25,8 +25,6 @@ use Unicode::GCString qw();
 use if $^O eq 'MSWin32', 'Win32::Console';
 use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 
-END { ReadMode 0 }
-
 sub BSPACE                  () { 0x7f }
 sub UP                      () { "\e[A" }
 sub CLEAR_TO_END_OF_SCREEN  () { "\e[0J" }
@@ -35,69 +33,10 @@ sub SAVE_CURSOR_POSITION    () { "\e[s" }
 sub RESTORE_CURSOR_POSITION () { "\e[u" }
 
 
-
-sub choose_a_directory {
-    my ( $dir, $opt ) = @_;
-    $opt //= {};
-    my $show_hidden = $opt->{show_hidden}  // 1;
-    my $clear       = $opt->{clear_screen} // 1;
-    my $mouse       = $opt->{mouse}        // 0;
-    my $layout      = $opt->{layout}       // 1;
-    my $order       = $opt->{order}        // 1;
-    #                 $opt->{prompt};
-    my $justify     = $opt->{justify}      // 0;
-    my $enchanted   = $opt->{enchanted }   // 1;
-    my $confirm     = $opt->{confirm}      // '.';
-    my $up          = $opt->{up}           // '..';
-    my $back        = $opt->{back}         // '<';
-    my $default     = $enchanted  ? 2 : 0;
-    $dir            = realpath $dir;
-    my $curr        = $dir;
-    my $previous    = $dir;
-    while ( 1 ) {
-        my ( $dh, @dirs );
-        if ( ! eval {
-            opendir( $dh, $dir ) or die $!;
-            1 }
-        ) {
-            print "$@";
-            choose( [ 'Press Enter:' ], { prompt => '' } );
-            $dir = dirname $dir;
-            next;
-        }
-        while ( my $file = readdir $dh ) {
-            next if $file =~ /^\.\.?\z/;
-            next if $file =~ /^\./ && ! $show_hidden;
-            push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
-        }
-        closedir $dh;
-        my $prompt = $opt->{prompt};
-        if ( defined $prompt ) {
-            $prompt .= 'Dir: ' . $dir;  ###
-        }
-        else {
-            $prompt  = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
-            $prompt .= '    New dir: "' . decode( 'locale_fs', $dir  ) . '"' . "\n\n";
-        }
-        my $choice = choose(
-            [ undef, $confirm, $up, sort( @dirs ) ],
-            { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
-              justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
-        );
-        return if ! defined $choice;
-        return $previous if $choice eq $confirm;
-        $choice = encode( 'locale_fs', $choice );
-        $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, $choice );
-        $default = $previous eq $dir ? 0 : $enchanted  ? 2 : 0;
-        $previous = $dir;
-    }
-}
-
-
 sub choose_a_dir {
     my ( $opt ) = @_;
     $opt //= {};
-    my $dir         = $opt->{dir}        // File::HomeDir->my_home();
+    my $dir         = $opt->{dir}        // File::HomeDir->my_home(); # encode( 'locale_fs', $opt->{dir} );
     my $show_hidden = $opt->{show_hidden}  // 1;
     my $clear       = $opt->{clear_screen} // 1;
     my $mouse       = $opt->{mouse}        // 0;
@@ -134,7 +73,7 @@ sub choose_a_dir {
         closedir $dh;
         my $prompt = $opt->{prompt};
         if ( defined $prompt ) {
-            $prompt .= 'Dir: ' . $dir;  ###
+            $prompt .= 'Dir: ' . decode( 'locale_fs', $dir );  ###
         }
         else {
             $prompt  = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
@@ -146,7 +85,7 @@ sub choose_a_dir {
               justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
         );
         return if ! defined $choice;
-        return $previous if $choice eq $confirm;
+        return decode( 'locale_fs', $previous ) if $choice eq $confirm;
         $choice = encode( 'locale_fs', $choice );
         $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, $choice );
         $default = $previous eq $dir ? 0 : $enchanted  ? $#pre : 0;
@@ -589,8 +528,25 @@ sub unicode_trim {
 }
 
 
+
+
+sub new {
+    my $class = shift;
+    #my ( $opt ) = @_;
+    return bless {}, $class;
+}
+
+sub DESTROY {
+    my ( $self ) = @_;
+    ReadMode 0;
+}
+
+
 sub util_readline {
-    my ( $prompt, $opt ) = @_;
+    if ( ref $_[0] ne 'Term::Choose::Util' ) {
+        return Term::Choose::Util->new()->util_readline( @_ );
+    }
+    my ( $self, $prompt, $opt ) = @_;
     $prompt //= '';
     $opt    //= {};
     my $no_echo = $opt->{no_echo};
@@ -606,7 +562,7 @@ sub util_readline {
     local $| = 1;
     ReadMode 'cbreak';
     print SAVE_CURSOR_POSITION;
-    _print_readline( $prompt, $str, $no_echo );
+    $self->__print_readline( $prompt, $str, $no_echo );
 
     while ( 1 ) {
         my $key = ReadKey;
@@ -618,7 +574,7 @@ sub util_readline {
                 return;
             }
             $str = '';
-            _print_readline( $prompt, $str, $no_echo );
+            $self->__print_readline( $prompt, $str, $no_echo );
             next;
         }
         elsif ( $key eq "\n" or $key eq "\r" ) {
@@ -629,22 +585,22 @@ sub util_readline {
             if ( length $str ) {
                 $str =~ s/\X\z//; # ?
              }
-            _print_readline( $prompt, $str, $no_echo );
+            $self->__print_readline( $prompt, $str, $no_echo );
             next;
         }
         elsif ( $key !~ /^\p{Print}\z/ ) {
-            _print_readline( $prompt, $str, $no_echo );
+            $self->__print_readline( $prompt, $str, $no_echo );
             next;
         }
         $str .= $key;
-        _print_readline( $prompt, $str, $no_echo );
+        $self->__print_readline( $prompt, $str, $no_echo );
     }
     ReadMode 'normal';
     return $str;
 }
 
-sub _print_readline {
-    my ( $prompt, $str, $no_echo ) = @_;
+sub __print_readline {
+    my ( $self, $prompt, $str, $no_echo ) = @_;
     my $gcs = Unicode::GCString->new( $prompt . $str );
     my $up = int( $gcs->columns() / ( GetTerminalSize( \*STDOUT ) )[0] );
     print RESTORE_CURSOR_POSITION;
@@ -673,7 +629,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.011
+Version 0.012
 
 =cut
 
@@ -1301,7 +1257,7 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 
 =head2 print_hash
 
-Prints a simple hash to STDOUT (or to STDERR if the output is redirected) if called in void context. If not called in
+Prints a simple hash to STDOUT if called in void context. If not called in
 void context, I<print_hash> returns the formatted hash as a string.
 
 Nested hashes are not supported. If the hash has more keys than the terminal rows, the output is divided up on several
@@ -1430,7 +1386,9 @@ string is returned as it is.
 
 I<Length> means here number of print columns as returned by the C<columns> method from  L<Unicode::GCString>.
 
-=head2 util_readline
+=head2 util_readline DEPRECATED
+
+C<util_readline> is deprecated and will be removed. Use L<Term::ReadLine::Tiny::readline> instead.
 
 C<util_readline> reads a line.
 
