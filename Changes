@@ -3,6 +3,8 @@ Revision history for Term::Choose::Util
 
 0.012   2014-08-16
         - "util_readline" deprecated.
+        - Removed deprecated function "choose_a_directory".
+        - Code refactoring.
         - Update documentation.
 
 0.011   2014-07-10
