@@ -2,9 +2,9 @@ package Term::Choose::Util;
 
 use warnings;
 use strict;
-use 5.010001;
+use 5.010000;
 
-our $VERSION = '0.013';
+our $VERSION = '0.014';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim util_readline );
@@ -628,7 +628,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.013
+Version 0.014
 
 =cut
 
@@ -638,7 +638,7 @@ See L</SUBROUTINES>.
 
 =head1 DESCRIPTION
 
-This module provides some CLI related functions required by L<App::DBBrowser> and L<Term::TablePrint>.
+This module provides some CLI related functions required by L<App::DBBrowser>, L<App::YTDL> and L<Term::TablePrint>.
 
 =head1 EXPORT
 
@@ -1419,7 +1419,7 @@ On MSWin32 C<util_readline> supports only single-byte character sets if I<no_ech
 
 =head2 Perl version
 
-Requires Perl version 5.10.1 or greater.
+Requires Perl version 5.10.0 or greater.
 
 =head2 Encoding layer
 

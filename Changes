@@ -1,6 +1,10 @@
 Revision history for Term::Choose::Util
 
 
+0.014   2014-08-16
+        - Perl minimum version from "5.10.1" to "5.10.0".
+        - Update documentation.
+
 0.013   2014-08-16
         - Modified encoding/decoding in "choose_a_dir" and "choose_dirs".
 
