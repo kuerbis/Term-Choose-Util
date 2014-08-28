@@ -4,10 +4,10 @@ use warnings;
 use strict;
 use 5.010000;
 
-our $VERSION = '0.014';
+our $VERSION = '0.015';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
-                     print_hash term_size unicode_sprintf unicode_trim util_readline );
+                     print_hash term_size unicode_sprintf unicode_trim );
 
 use Cwd                   qw( realpath );
 use Encode                qw( decode encode );
@@ -528,92 +528,6 @@ sub unicode_trim {
 
 
 
-
-sub new {
-    my $class = shift;
-    #my ( $opt ) = @_;
-    return bless {}, $class;
-}
-
-sub DESTROY {
-    my ( $self ) = @_;
-    ReadMode 0;
-}
-
-
-sub util_readline {
-    if ( ref $_[0] ne 'Term::Choose::Util' ) {
-        return Term::Choose::Util->new()->util_readline( @_ );
-    }
-    my ( $self, $prompt, $opt ) = @_;
-    $prompt //= '';
-    $opt    //= {};
-    my $no_echo = $opt->{no_echo};
-    if ( $^O eq 'MSWin32' && $no_echo ) {
-        print $prompt;
-        ReadMode 'noecho';
-        my $passwd = <STDIN>;
-        chomp $passwd;
-        ReadMode 'normal';
-        return $passwd;
-    }
-    my $str = $opt->{default} // '';
-    local $| = 1;
-    ReadMode 'cbreak';
-    print SAVE_CURSOR_POSITION;
-    $self->__print_readline( $prompt, $str, $no_echo );
-
-    while ( 1 ) {
-        my $key = ReadKey;
-        return if ! defined $key;
-        $key = decode( 'console_in', $key ) if $^O eq 'MSWin32';
-        if ( $key eq "\cD" ) {
-            if ( ! length $str ) {
-                print "\n";
-                return;
-            }
-            $str = '';
-            $self->__print_readline( $prompt, $str, $no_echo );
-            next;
-        }
-        elsif ( $key eq "\n" or $key eq "\r" ) {
-            print "\n";
-            return $str;
-        }
-        elsif ( ord $key == BSPACE || $key eq "\cH" ) {
-            if ( length $str ) {
-                $str =~ s/\X\z//; # ?
-             }
-            $self->__print_readline( $prompt, $str, $no_echo );
-            next;
-        }
-        elsif ( $key !~ /^\p{Print}\z/ ) {
-            $self->__print_readline( $prompt, $str, $no_echo );
-            next;
-        }
-        $str .= $key;
-        $self->__print_readline( $prompt, $str, $no_echo );
-    }
-    ReadMode 'normal';
-    return $str;
-}
-
-sub __print_readline {
-    my ( $self, $prompt, $str, $no_echo ) = @_;
-    my $gcs = Unicode::GCString->new( $prompt . $str );
-    my $up = int( $gcs->columns() / ( GetTerminalSize( \*STDOUT ) )[0] );
-    print RESTORE_CURSOR_POSITION;
-    if ( $up ) {
-        print "\n" x $up;
-        print UP x $up;
-    }
-    print CLEAR_TO_END_OF_SCREEN;
-    print SAVE_CURSOR_POSITION;
-    print $prompt . ( $no_echo ? '' : $str );
-}
-
-
-
 1;
 
 __END__
@@ -628,7 +542,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.014
+Version 0.015
 
 =cut
 
@@ -1384,36 +1298,6 @@ If the string is longer than the passed length, it is trimmed to that length at 
 string is returned as it is.
 
 I<Length> means here number of print columns as returned by the C<columns> method from  L<Unicode::GCString>.
-
-=head2 util_readline DEPRECATED
-
-C<util_readline> is deprecated and will be removed. Use L<Term::ReadLine::Tiny::readline> instead.
-
-C<util_readline> reads a line.
-
-    $string = util_readline( $prompt, { no_echo => 0 } )
-
-The fist argument is the prompt string. The optional second argument is a reference to a hash. The two keys/options are
-
-=over
-
-=item
-
-no_echo
-
-Values: [0],1.
-
-=item
-
-default
-
-Set a default value.
-
-=back
-
-It is not required to C<chomp> the returned string.
-
-On MSWin32 C<util_readline> supports only single-byte character sets if I<no_echo> is disabled.
 
 =head1 REQUIREMENTS
 
