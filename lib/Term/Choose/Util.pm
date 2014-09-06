@@ -275,7 +275,7 @@ sub choose_a_subset {
     #             $opt->{current}
     my $clear   = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
     my $mouse   = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
-    my $layout  = defined $opt->{layout}       ? $opt->{layout}       : 1;
+    my $layout  = defined $opt->{layout}       ? $opt->{layout}       : 3;
     my $order   = defined $opt->{order}        ? $opt->{order}        : 1;
     my $prefix  = defined $opt->{prefix}       ? $opt->{prefix}       : ( $layout == 3 ? '- ' : '' );
     my $justify = defined $opt->{justify}      ? $opt->{justify}      : 0;
