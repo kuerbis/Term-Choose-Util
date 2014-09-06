@@ -2,9 +2,9 @@ package Term::Choose::Util;
 
 use warnings;
 use strict;
-use 5.010000;
+use 5.008000;
 
-our $VERSION = '0.015';
+our $VERSION = '0.016';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -35,19 +35,20 @@ sub RESTORE_CURSOR_POSITION () { "\e[u" }
 
 sub choose_a_dir {
     my ( $opt ) = @_;
-    $opt //= {};
-    my $dir         = encode( 'locale_fs', $opt->{dir} ) // File::HomeDir->my_home();
-    my $show_hidden = $opt->{show_hidden}  // 1;
-    my $clear       = $opt->{clear_screen} // 1;
-    my $mouse       = $opt->{mouse}        // 0;
-    my $layout      = $opt->{layout}       // 1;
-    my $order       = $opt->{order}        // 1;
+    $opt = {} if ! defined $opt;
+    my $dir = encode( 'locale_fs', $opt->{dir} );
+    $dir = File::HomeDir->my_home() if ! defined $dir;
+    my $show_hidden = defined $opt->{show_hidden}  ? $opt->{show_hidden}  : 1;
+    my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
+    my $layout      = defined $opt->{layout}       ? $opt->{layout}       : 1;
+    my $order       = defined $opt->{order}        ? $opt->{order}        : 1;
     #                 $opt->{prompt};            #
-    my $justify     = $opt->{justify}      // 0;
-    my $enchanted   = $opt->{enchanted }   // 1;
-    my $confirm     = $opt->{confirm}      // '.';
-    my $up          = $opt->{up}           // '..';
-    my $back        = $opt->{back}         // '<';
+    my $justify     = defined $opt->{justify}      ? $opt->{justify}      : 0;
+    my $enchanted   = defined $opt->{enchanted}    ? $opt->{enchanted}    : 1;
+    my $confirm     = defined $opt->{confirm}      ? $opt->{confirm}      : '.';
+    my $up          = defined $opt->{up}           ? $opt->{up}           : '..';
+    my $back        = defined $opt->{back}         ? $opt->{back}         : '<';
     my $curr        = $dir;
     my $previous    = $dir;
     my @pre         = ( undef, $confirm, $up );
@@ -95,21 +96,22 @@ sub choose_a_dir {
 
 sub choose_dirs {
     my ( $opt ) = @_;
-    $opt //= {};
-    my $start_dir   = encode( 'locale_fs', $opt->{dir} ) // File::HomeDir->my_home();
-    my $show_hidden = $opt->{show_hidden}  // 1;
+    $opt = {} if ! defined $opt;
+    my $start_dir   = encode( 'locale_fs', $opt->{dir} );
+    $start_dir = File::HomeDir->my_home() if ! defined $start_dir;
+    my $show_hidden = defined $opt->{show_hidden}  ? $opt->{show_hidden}  : 1;
     my $current     = $opt->{current};
-    my $clear       = $opt->{clear_screen} // 1;
-    my $mouse       = $opt->{mouse}        // 0;
-    my $layout      = $opt->{layout}       // 1;
-    my $order       = $opt->{order}        // 1;
-    my $justify     = $opt->{justify}      // 0;
-    my $enchanted   = $opt->{enchanted}    // 1;
+    my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
+    my $layout      = defined $opt->{layout}       ? $opt->{layout}       : 1;
+    my $order       = defined $opt->{order}        ? $opt->{order}        : 1;
+    my $justify     = defined $opt->{justify}      ? $opt->{justify}      : 0;
+    my $enchanted   = defined $opt->{enchanted}    ? $opt->{enchanted}    : 1;
     #--------------------------------------#
-    my $confirm     = $opt->{confirm}      // ' = ';
-    my $back        = $opt->{back}         // ' < ';
-    my $add_dir     = $opt->{add_dir}      // ' . ';
-    my $up          = $opt->{up}           // ' .. ';
+    my $confirm     = defined $opt->{confirm}      ? $opt->{confirm}      : ' = ';
+    my $back        = defined $opt->{back}         ? $opt->{back}         : ' < ';
+    my $add_dir     = defined $opt->{add_dir}      ? $opt->{add_dir}      : ' . ';
+    my $up          = defined $opt->{up}           ? $opt->{up}           : ' .. ';
     my $key_cur     = 'Current: ';
     my $key_new     = '    New: ';
     my $gcs_cur     = Unicode::GCString->new( $key_cur );
@@ -175,17 +177,17 @@ sub choose_dirs {
 
 sub choose_a_number {
     my ( $digits, $opt ) = @_;
-    $opt //= {};
+    $opt = {} if ! defined $opt;
     #                $opt->{current}
-    my $thsd_sep   = $opt->{thsd_sep}     // ',';
-    my $name       = $opt->{name}         // '';
-    my $clear      = $opt->{clear_screen} // 1;
-    my $mouse      = $opt->{mouse}        // 0;
+    my $thsd_sep   = defined $opt->{thsd_sep}     ? $opt->{thsd_sep}     : ',';
+    my $name       = defined $opt->{name}         ? $opt->{name}         : '';
+    my $clear      = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $mouse      = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     #-------------------------------------------#
-    my $back       = $opt->{back}         // 'BACK';
-    my $back_short = $opt->{back_short}   // '<<';
-    my $confirm    = $opt->{confirm}      // 'CONFIRM';
-    my $reset      = $opt->{reset}        // 'reset';
+    my $back       = defined $opt->{back}         ? $opt->{back}         : 'BACK';
+    my $back_short = defined $opt->{back_short}   ? $opt->{back_short}   : '<<';
+    my $confirm    = defined $opt->{confirm}      ? $opt->{confirm}      : 'CONFIRM';
+    my $reset      = defined $opt->{reset}        ? $opt->{reset}        : 'reset';
     my $tab        = '  -  ';
     my $gcs_tab    = Unicode::GCString->new( $tab );
     my $len_tab = $gcs_tab->columns;
@@ -219,7 +221,7 @@ sub choose_a_number {
     my $undef = '--';
 
     NUMBER: while ( 1 ) {
-        my $new_result = $result // $undef;
+        my $new_result = defined $result ? $result : $undef;
         my $prompt = '';
         if ( exists $opt->{current} ) {
             $opt->{current} = defined $opt->{current} ? insert_sep( $opt->{current}, $thsd_sep ) : $undef;
@@ -269,19 +271,19 @@ sub choose_a_number {
 
 sub choose_a_subset {
     my ( $available, $opt ) = @_;
-    $opt //= {};
+    $opt = {} if ! defined $opt;
     #             $opt->{current}
-    my $clear   = $opt->{clear_screen} // 1;
-    my $mouse   = $opt->{mouse}        // 0;
-    my $layout  = $opt->{layout}       // 3;
-    my $order   = $opt->{order}        // 1;
-    my $prefix  = $opt->{prefix}       // ( $layout == 3 ? '- ' : '' );
-    my $justify = $opt->{justify}      // 0;
+    my $clear   = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $mouse   = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
+    my $layout  = defined $opt->{layout}       ? $opt->{layout}       : 1;
+    my $order   = defined $opt->{order}        ? $opt->{order}        : 1;
+    my $prefix  = defined $opt->{prefix}       ? $opt->{prefix}       : ( $layout == 3 ? '- ' : '' );
+    my $justify = defined $opt->{justify}      ? $opt->{justify}      : 0;
     #--------------------------------------#
-    my $confirm = $opt->{confirm}      // 'CONFIRM';
-    my $back    = $opt->{back}         // 'BACK';
-    my $key_cur = $opt->{p_curr}       // 'Current > ';
-    my $key_new = $opt->{p_new}        // '    New > ';
+    my $confirm = defined $opt->{confirm}      ? $opt->{confirm}      : 'CONFIRM';
+    my $back    = defined $opt->{back}         ? $opt->{back}         : 'BACK';
+    my $key_cur = defined $opt->{p_curr}       ? $opt->{p_curr}       : 'Current > ';
+    my $key_new = defined $opt->{p_new}        ? $opt->{p_new}        : '    New > ';
     if ( $prefix ) {
         my $gcs_prefix = Unicode::GCString->new( $prefix );
         my $len_prefix = $gcs_prefix->columns();
@@ -326,13 +328,13 @@ sub choose_a_subset {
 
 sub choose_multi {
     my ( $menu, $val, $opt ) = @_;
-    $opt //= {};
-    my $in_place = $opt->{in_place}     // 1;
-    my $clear    = $opt->{clear_screen} // 1;
-    my $mouse    = $opt->{mouse}        // 0;
+    $opt = {} if ! defined $opt;
+    my $in_place = defined $opt->{in_place}     ? $opt->{in_place}     : 1;
+    my $clear    = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $mouse    = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     #---------------------------------------#
-    my $back     = $opt->{back}         // 'BACK';
-    my $confirm  = $opt->{confirm}      // 'CONFIRM';
+    my $confirm = defined $opt->{confirm}       ? $opt->{confirm}      : 'CONFIRM';
+    my $back    = defined $opt->{back}          ? $opt->{back}         : 'BACK';
     $back    = '  ' . $back;
     $confirm = '  ' . $confirm;
     my $longest = 0;
@@ -390,7 +392,7 @@ sub choose_multi {
 sub insert_sep {
     my ( $number, $separator ) = @_;
     return if ! defined $number;
-    $separator //= ',';
+    $separator = ',' if ! defined $separator;
     return $number if $number =~ /\Q$separator\E/;
     $number =~ s/(^[-+]?\d+?(?=(?>(?:\d{3})+)(?!\d))|\G\d{3}(?=\d))/$1$separator/g;
     # http://perldoc.perl.org/perlfaq5.html#How-can-I-output-my-numbers-with-commas-added?
@@ -413,19 +415,18 @@ sub length_longest {
 
 sub print_hash {
     my ( $hash, $opt ) = @_;
-    $opt //= {};
-    my $left_margin  = $opt->{left_margin}  // 1;
-    my $right_margin = $opt->{right_margin} // 2;
-    my $keys         = $opt->{keys}         // [ sort keys %$hash ];
-    my $len_key      = $opt->{len_key}      // length_longest( $keys );
+    $opt = {} if ! defined $opt;
+    my $left_margin  = defined $opt->{left_margin}  ? $opt->{left_margin}  : 1;
+    my $right_margin = defined $opt->{right_margin} ? $opt->{right_margin} : 2;
+    my $keys         = defined $opt->{keys}         ? $opt->{keys}         : [ sort keys %$hash ];
+    my $len_key      = defined $opt->{len_key}      ? $opt->{len_key}      : length_longest( $keys );
     my $maxcols      = $opt->{maxcols};
-    my $clear        = $opt->{clear_screen} // 1;
-    my $mouse        = $opt->{mouse}        // 0;
-    my $prompt       = $opt->{prompt}       // ( defined $opt->{preface} ? '' : 'Close with ENTER' );
+    my $clear        = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $mouse        = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
+    my $prompt       = defined $opt->{prompt}       ? $opt->{prompt}       : ( defined $opt->{preface} ? '' : 'Close with ENTER' );
     my $preface      = $opt->{preface};
     #-----------------------------------------------------------------#
-    my $line_fold    = $opt->{lf}           // { Charset => 'utf-8', Newline => "\n",
-                                                 OutputCharset => '_UNICODE_', Urgent => 'FORCE' };
+    my $line_fold = defined $opt->{lf} ? $opt->{lf} : { Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_', Urgent => 'FORCE' };
     my $term_width = ( term_size() )[0];
     if ( ! $maxcols || $maxcols > $term_width  ) {
         $maxcols = $term_width - $right_margin;
@@ -449,7 +450,7 @@ sub print_hash {
         my $pr_key = sprintf "%*.*s%*s", $len_key, $len_key, $key, $len_sep, $sep;
         my $text = $lf->fold(
             '' , ' ' x ( $len_key + $len_sep ),
-            $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : $hash->{$key} // '' )
+            $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : ( defined $hash->{$key} ? $hash->{$key} : '' ) )
         );
         $text =~ s/\R+\z//;
         for my $val ( split /\R+/, $text ) {
@@ -465,7 +466,7 @@ sub print_hash {
 
 
 sub term_size {
-    my ( $handle_out ) = shift // \*STDOUT;
+    my ( $handle_out ) = defined $_[0] ? $_[0] : \*STDOUT;
     if ( $^O eq 'MSWin32' ) {
         my ( $width, $height ) = Win32::Console->new()->Size();
         return $width - 1, $height;
@@ -542,7 +543,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.015
+Version 0.016
 
 =cut
 
@@ -1303,7 +1304,7 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 
 =head2 Perl version
 
-Requires Perl version 5.10.0 or greater.
+Requires Perl version 5.8.0 or greater.
 
 =head2 Encoding layer
 

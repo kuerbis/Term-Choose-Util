@@ -1,6 +1,10 @@
 Revision history for Term::Choose::Util
 
 
+0.016   2014-09-06
+        - Perl minimum versiont from "5.10.0" to "5.8.0".
+        - Update documentation.
+
 0.015   2014-08-28
         - Removed deprecated function "util_readline".
         - Update documentation.
