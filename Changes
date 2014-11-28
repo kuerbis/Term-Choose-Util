@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.017   2014-11-28
+        - Stringify variables passed to "Unicode::GCString".
+
 0.016   2014-09-06
         - Perl minimum versiont from "5.10.0" to "5.8.0".
         - Update documentation.

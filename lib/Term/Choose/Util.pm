@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008000;
 
-our $VERSION = '0.016';
+our $VERSION = '0.017';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -114,11 +114,11 @@ sub choose_dirs {
     my $up          = defined $opt->{up}           ? $opt->{up}           : ' .. ';
     my $key_cur     = 'Current: ';
     my $key_new     = '    New: ';
-    my $gcs_cur     = Unicode::GCString->new( $key_cur );
-    my $gcs_new     = Unicode::GCString->new( $key_new );
+    my $gcs_cur     = Unicode::GCString->new( "$key_cur" );
+    my $gcs_new     = Unicode::GCString->new( "$key_new" );
     my $len_key     = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
     my $key_cwd     = 'pwd: ';
-    my $gcs_key_cwd = Unicode::GCString->new( $key_cwd );
+    my $gcs_key_cwd = Unicode::GCString->new( "$key_cwd" );
     my $len_key_cwd = $gcs_key_cwd->columns;
     my $new         = [];
     my $dir         = realpath $start_dir;
@@ -189,7 +189,7 @@ sub choose_a_number {
     my $confirm    = defined $opt->{confirm}      ? $opt->{confirm}      : 'CONFIRM';
     my $reset      = defined $opt->{reset}        ? $opt->{reset}        : 'reset';
     my $tab        = '  -  ';
-    my $gcs_tab    = Unicode::GCString->new( $tab );
+    my $gcs_tab    = Unicode::GCString->new( "$tab" );
     my $len_tab = $gcs_tab->columns;
     my $longest    = $digits;
     $longest += int( ( $digits - 1 ) / 3 ) if $thsd_sep ne '';
@@ -204,7 +204,7 @@ sub choose_a_number {
     my $confirm_tmp = sprintf "%-*s", $longest * 2 + $len_tab, $confirm;
     my $back_tmp    = sprintf "%-*s", $longest * 2 + $len_tab, $back;
     my $term_width = ( term_size() )[0];
-    my $gcs_longest_range = Unicode::GCString->new( $choices_range[0] );
+    my $gcs_longest_range = Unicode::GCString->new( "$choices_range[0]" );
     if ( $gcs_longest_range->columns > $term_width ) {
         @choices_range = ();
         for my $di ( 0 .. $digits - 1 ) {
@@ -285,13 +285,13 @@ sub choose_a_subset {
     my $key_cur = defined $opt->{p_curr}       ? $opt->{p_curr}       : 'Current > ';
     my $key_new = defined $opt->{p_new}        ? $opt->{p_new}        : '    New > ';
     if ( $prefix ) {
-        my $gcs_prefix = Unicode::GCString->new( $prefix );
+        my $gcs_prefix = Unicode::GCString->new( "$prefix" );
         my $len_prefix = $gcs_prefix->columns();
         $confirm = ( ' ' x $len_prefix ) . $confirm;
         $back    = ( ' ' x $len_prefix ) . $back;
     }
-    my $gcs_cur = Unicode::GCString->new( $key_cur );
-    my $gcs_new = Unicode::GCString->new( $key_new );
+    my $gcs_cur = Unicode::GCString->new( "$key_cur" );
+    my $gcs_new = Unicode::GCString->new( "$key_new" );
     my $len_key = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
     my $new = [];
 
@@ -341,7 +341,7 @@ sub choose_multi {
     my $tmp     = {};
     for my $sub ( @$menu ) {
         my ( $key, $prompt ) = @$sub;
-        my $gcs = Unicode::GCString->new( $prompt );
+        my $gcs = Unicode::GCString->new( "$prompt" );
         my $length = $gcs->columns();
         $longest = $length if $length > $longest;
         $tmp->{$key} = $val->{$key};
@@ -405,7 +405,7 @@ sub length_longest {
     my $len = [];
     my $longest = 0;
     for my $i ( 0 .. $#$list ) {
-        my $gcs = Unicode::GCString->new( $list->[$i] );
+        my $gcs = Unicode::GCString->new( "$list->[$i]" );
         $len->[$i] = $gcs->columns();
         $longest = $len->[$i] if $len->[$i] > $longest;
     }
@@ -433,7 +433,7 @@ sub print_hash {
     }
     $len_key += $left_margin;
     my $sep = ' : ';
-    my $gcs = Unicode::GCString->new( $sep );
+    my $gcs = Unicode::GCString->new( "$sep" );
     my $len_sep = $gcs->columns();
     if ( $len_key + $len_sep > int( $maxcols / 3 * 2 ) ) {
         $len_key = int( $maxcols / 3 * 2 ) - $len_sep;
@@ -477,7 +477,7 @@ sub term_size {
 
 sub unicode_sprintf {
     my ( $unicode, $avail_width, $right_justify ) = @_;
-    my $gcs = Unicode::GCString->new( $unicode );
+    my $gcs = Unicode::GCString->new( "$unicode" );
     my $colwidth = $gcs->columns;
     if ( $colwidth > $avail_width ) {
         my $pos = $gcs->pos;
@@ -511,7 +511,7 @@ sub unicode_sprintf {
 sub unicode_trim {
     my ( $unicode, $len ) = @_;
     return '' if $len <= 0;
-    my $gcs = Unicode::GCString->new( $unicode );
+    my $gcs = Unicode::GCString->new( "$unicode" );
     my $pos = $gcs->pos;
     $gcs->pos( 0 );
     my $cols = 0;
@@ -543,7 +543,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.016
+Version 0.017
 
 =cut
 
