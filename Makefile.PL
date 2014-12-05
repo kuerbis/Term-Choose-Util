@@ -44,7 +44,7 @@ WriteMakefile(
         'File::HomeDir'         => 0,
         'File::Spec::Functions' => 0,
         'List::Util'            => 0,
-        'Term::Choose'          => '1.116',
+        'Term::Choose'          => '1.117',
         'Term::ReadKey'         => 0,
         'Text::LineFold'        => 0,
         'Unicode::GCString'     => 0,

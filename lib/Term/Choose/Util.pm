@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008000;
 
-our $VERSION = '0.017';
+our $VERSION = '0.018';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -452,8 +452,8 @@ sub print_hash {
             '' , ' ' x ( $len_key + $len_sep ),
             $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : ( defined $hash->{$key} ? $hash->{$key} : '' ) )
         );
-        $text =~ s/\R+\z//;
-        for my $val ( split /\R+/, $text ) {
+        $text =~ s/(?>\x0D\x0A|\v)+\z//; # \R requires 5.10.0 or greater
+        for my $val ( split /(?>\x0D\x0A|\v)+/, $text ) {
             push @vals, $val;
         }
     }
@@ -543,7 +543,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.017
+Version 0.018
 
 =cut
 
