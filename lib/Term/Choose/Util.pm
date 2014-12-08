@@ -2,9 +2,9 @@ package Term::Choose::Util;
 
 use warnings;
 use strict;
-use 5.008000;
+use 5.008003;
 
-our $VERSION = '0.018';
+our $VERSION = '0.019';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -452,8 +452,8 @@ sub print_hash {
             '' , ' ' x ( $len_key + $len_sep ),
             $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : ( defined $hash->{$key} ? $hash->{$key} : '' ) )
         );
-        $text =~ s/(?>\x0D\x0A|\v)+\z//; # \R requires 5.10.0 or greater
-        for my $val ( split /(?>\x0D\x0A|\v)+/, $text ) {
+        $text =~ s/\n+\z//;
+        for my $val ( split /\n+/, $text ) {
             push @vals, $val;
         }
     }
@@ -543,7 +543,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.018
+Version 0.019
 
 =cut
 
@@ -1304,7 +1304,7 @@ I<Length> means here number of print columns as returned by the C<columns> metho
 
 =head2 Perl version
 
-Requires Perl version 5.8.0 or greater.
+Requires Perl version 5.8.3 or greater.
 
 =head2 Encoding layer
 
