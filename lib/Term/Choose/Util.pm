@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.019';
+our $VERSION = '0.020';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -273,6 +273,7 @@ sub choose_a_subset {
     my ( $available, $opt ) = @_;
     $opt = {} if ! defined $opt;
     #             $opt->{current}
+    my $index   = defined $opt->{index}        ? $opt->{index}        : 0;
     my $clear   = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
     my $mouse   = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     my $layout  = defined $opt->{layout}       ? $opt->{layout}       : 3;
@@ -293,7 +294,8 @@ sub choose_a_subset {
     my $gcs_cur = Unicode::GCString->new( "$key_cur" );
     my $gcs_new = Unicode::GCString->new( "$key_new" );
     my $len_key = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
-    my $new = [];
+    my $new_idx = [];
+    my $new     = [];
 
     while ( 1 ) {
         my $prompt = '';
@@ -301,27 +303,31 @@ sub choose_a_subset {
         $prompt .= $key_new . join( ', ', map { "\"$_\"" } @$new )              . "\n\n";
         $prompt .= 'Choose:';
         my @pre = ( undef, $confirm );
+        my @avail_with_prefix = map { $prefix . $_ } @$available;
         # Choose
-        my @choice = choose(
-            [ @pre, map( $prefix . $_, @$available ) ],
+        my @idx = choose(
+            [ @pre, @avail_with_prefix  ],
             { prompt => $prompt, layout => $layout, mouse => $mouse, clear_screen => $clear, justify => $justify,
-              lf => [ 0, $len_key ], order => $order, no_spacebar => [ 0 .. $#pre ], undef => $back }
+              index => 1, lf => [ 0, $len_key ], order => $order, no_spacebar => [ 0 .. $#pre ], undef => $back }
         );
-        if ( ! @choice || ! defined $choice[0] ) {
-            if ( @$new ) {
-                $new = [];
+        if ( ! defined $idx[0] || $idx[0] == 0 ) {
+            if ( @$new_idx ) {
+                $new_idx = [];
+                $new     = [];
                 next;
             }
             else {
                 return;
             }
         }
-        if ( $choice[0] eq $confirm ) {
-            shift @choice;
-            push @$new, map { s/^\Q$prefix\E//; $_ } @choice if @choice;
-            return $new;
+        if ( $idx[0] == 1 ) {
+            shift @idx;
+            push @$new,     map { $available->[$_ - @pre] } @idx;
+            push @$new_idx, map { $_ - @pre }               @idx;
+            return $index ? $new_idx : $new;
         }
-        push @$new, map { s/^\Q$prefix\E//; $_ } @choice;
+        push @$new,     map { $available->[$_ - @pre] } @idx;
+        push @$new_idx, map { $_ - @pre }               @idx;
     }
 }
 
@@ -543,7 +549,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.019
+Version 0.020
 
 =cut
 
@@ -997,10 +1003,17 @@ Values: 0,[1].
 
 current
 
-This option expects as its value the current subset (a reference to an array). If set, two prompt lines are displayed -
-one for the current subset and one for the new subset.
+This option expects as its value the current subset of the available list (a reference to an array). If set, two prompt
+lines are displayed - one for the current subset and one for the new subset. Even if the option I<index> is true the
+passed current subset is made of values and not of indexes.
 
 The subset is returned as an array reference.
+
+=item
+
+index
+
+If true, the index positions in the available list of the made choices is returned.
 
 =item
 
