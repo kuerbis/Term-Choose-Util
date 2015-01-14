@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.020';
+our $VERSION = '0.021';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -231,15 +231,23 @@ sub choose_a_number {
         else {
             $prompt = sprintf "%s%*s\n\n", $name . ': ', $longest, $new_result;
         }
+        my @pre = ( undef, $confirm_tmp );
         # Choose
         my $range = choose(
-            [ undef, $confirm_tmp, @choices_range ],
+            [ @pre, @choices_range ],
             { prompt => $prompt, layout => 3, justify => 1, mouse => $mouse,
               clear_screen => $clear, undef => $back_tmp }
         );
-        return if ! defined $range;
+        if ( ! defined $range ) {
+            if ( defined $result ) {
+                $result = undef;
+                next NUMBER;
+            }
+            else {
+                return;
+            }
+        }
         if ( $range eq $confirm_tmp ) {
-            #return $undef if ! defined $result;
             return if ! defined $result;
             $result =~ s/\Q$thsd_sep\E//g if $thsd_sep ne '';
             return $result;
@@ -335,6 +343,7 @@ sub choose_a_subset {
 sub choose_multi {
     my ( $menu, $val, $opt ) = @_;
     $opt = {} if ! defined $opt;
+    my $prompt   = defined $opt->{prompt}       ? $opt->{prompt}       : 'Choose:';
     my $in_place = defined $opt->{in_place}     ? $opt->{in_place}     : 1;
     my $clear    = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
     my $mouse    = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
@@ -366,7 +375,7 @@ sub choose_multi {
         # Choose
         my $idx = choose(
             $choices,
-            { prompt => 'Choose:', index => 1, layout => 3, justify => 0,
+            { prompt => $prompt, index => 1, layout => 3, justify => 0,
               mouse => $mouse, clear_screen => $clear, undef => $back }
         );
         return if ! defined $idx;
@@ -549,7 +558,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.020
+Version 0.021
 
 =cut
 
@@ -1141,6 +1150,12 @@ See the option I<mouse> in L<Term::Choose>
 
 Values: [0],1,2,3,4.
 
+=item
+
+prompt
+
+A prompt string used instead of the default prompt string.
+
 =back
 
 When C<choose_multi> is called, it displays for each array entry a row with the prompt string and the current value.
@@ -1340,7 +1355,7 @@ L<stackoverflow|http://stackoverflow.com> for the help.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2014 Matthäus Kiem.
+Copyright 2014-2015 Matthäus Kiem.
 
 This library is free software; you can redistribute it and/or modify it under the same terms as Perl 5.10.0. For
 details, see the full text of the licenses in the file LICENSE.

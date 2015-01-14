@@ -1,6 +1,11 @@
 Revision history for Term::Choose::Util
 
 
+0.021   2015-01-14
+        - "choose_multi": new option "prompt".
+        - Update copyright year.
+        - Update documentation.
+
 0.020   2014-12-19
         - New option "index" for "choose_a_subset".
         - Update documentation.
