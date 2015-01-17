@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.022   2015-01-17
+        - "print_hash": print-support for array references as hash values.
+
 0.021   2015-01-14
         - "choose_multi": new option "prompt".
         - Update copyright year.

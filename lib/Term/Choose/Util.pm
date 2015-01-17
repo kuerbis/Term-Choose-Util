@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.021';
+our $VERSION = '0.022';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -462,11 +462,18 @@ sub print_hash {
     }
     for my $key ( @$keys ) {
         next if ! exists $hash->{$key};
+        my $val;
+        if ( ! defined $hash->{$key} ) {
+            $val = '';
+        }
+        elsif ( ref $hash->{$key} eq 'ARRAY' ) {
+            $val = '[ ' . join( ', ', map { defined $_ ? "\"$_\"" : '' } @{$hash->{$key}} ) . ' ]';
+        }
+        else {
+            $val = $hash->{$key};
+        }
         my $pr_key = sprintf "%*.*s%*s", $len_key, $len_key, $key, $len_sep, $sep;
-        my $text = $lf->fold(
-            '' , ' ' x ( $len_key + $len_sep ),
-            $pr_key . ( ref( $hash->{$key} ) ? ref( $hash->{$key} ) : ( defined $hash->{$key} ? $hash->{$key} : '' ) )
-        );
+        my $text = $lf->fold( '' , ' ' x ( $len_key + $len_sep ), $pr_key . $val );
         $text =~ s/\n+\z//;
         for my $val ( split /\n+/, $text ) {
             push @vals, $val;
@@ -558,7 +565,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.021
+Version 0.022
 
 =cut
 
