@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.022';
+our $VERSION = '0.023';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -25,13 +25,14 @@ use Unicode::GCString qw();
 use if $^O eq 'MSWin32', 'Win32::Console';
 use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 
-sub BSPACE                  () { 0x7f }
-sub UP                      () { "\e[A" }
-sub CLEAR_TO_END_OF_SCREEN  () { "\e[0J" }
-sub CLEAR_SCREEN            () { "\e[1;1H\e[0J" }
-sub SAVE_CURSOR_POSITION    () { "\e[s" }
-sub RESTORE_CURSOR_POSITION () { "\e[u" }
-
+use constant {
+    BSPACE                  => 0x7f,
+    UP                      => "\e[A",
+    CLEAR_TO_END_OF_SCREEN  => "\e[0J",
+    CLEAR_SCREEN            => "\e[H\e[J",
+    SAVE_CURSOR_POSITION    => "\e[s",
+    RESTORE_CURSOR_POSITION => "\e[u",
+};
 
 sub choose_a_dir {
     my ( $opt ) = @_;
@@ -565,7 +566,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.022
+Version 0.023
 
 =cut
 
