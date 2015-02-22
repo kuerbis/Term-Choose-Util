@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.023';
+our $VERSION = '0.024';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -360,6 +360,9 @@ sub choose_multi {
         my $gcs = Unicode::GCString->new( "$prompt" );
         my $length = $gcs->columns();
         $longest = $length if $length > $longest;
+        if ( ! defined $val->{$key} ) {
+            $val->{$key} = 0;
+        }
         $tmp->{$key} = $val->{$key};
     }
     my $count = 0;
@@ -388,7 +391,9 @@ sub choose_multi {
                 for my $sub ( @$menu ) {
                     my $key = $sub->[0];
                     next if $val->{$key} == $tmp->{$key};
-                    $val->{$key} = $tmp->{$key} if $in_place;
+                    if ( $in_place ) {
+                        $val->{$key} = $tmp->{$key};
+                    }
                     $change++;
                 }
             }
@@ -566,7 +571,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.023
+Version 0.024
 
 =cut
 
@@ -1114,7 +1119,7 @@ the keys are the option names
 
 =item
 
-the values are the indexes of the current value of the respective key.
+the values (C<0> if not defined) are the indexes of the current value of the respective key.
 
 =back
 
