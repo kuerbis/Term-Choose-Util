@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.024';
+our $VERSION = '0.025';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -289,6 +289,7 @@ sub choose_a_subset {
     my $order   = defined $opt->{order}        ? $opt->{order}        : 1;
     my $prefix  = defined $opt->{prefix}       ? $opt->{prefix}       : ( $layout == 3 ? '- ' : '' );
     my $justify = defined $opt->{justify}      ? $opt->{justify}      : 0;
+    my $prompt  = defined $opt->{prompt}       ? $opt->{prompt}       : 'Choose:';
     #--------------------------------------#
     my $confirm = defined $opt->{confirm}      ? $opt->{confirm}      : 'CONFIRM';
     my $back    = defined $opt->{back}         ? $opt->{back}         : 'BACK';
@@ -307,16 +308,16 @@ sub choose_a_subset {
     my $new     = [];
 
     while ( 1 ) {
-        my $prompt = '';
-        $prompt .= $key_cur . join( ', ', map { "\"$_\"" } @{$opt->{current}} ) . "\n"   if defined $opt->{current};
-        $prompt .= $key_new . join( ', ', map { "\"$_\"" } @$new )              . "\n\n";
-        $prompt .= 'Choose:';
+        my $lines = '';
+        $lines .= $key_cur . join( ', ', map { "\"$_\"" } @{$opt->{current}} ) . "\n"   if defined $opt->{current};
+        $lines .= $key_new . join( ', ', map { "\"$_\"" } @$new )              . "\n\n";
+        $lines .= $prompt;
         my @pre = ( undef, $confirm );
         my @avail_with_prefix = map { $prefix . $_ } @$available;
         # Choose
         my @idx = choose(
             [ @pre, @avail_with_prefix  ],
-            { prompt => $prompt, layout => $layout, mouse => $mouse, clear_screen => $clear, justify => $justify,
+            { prompt => $lines, layout => $layout, mouse => $mouse, clear_screen => $clear, justify => $justify,
               index => 1, lf => [ 0, $len_key ], order => $order, no_spacebar => [ 0 .. $#pre ], undef => $back }
         );
         if ( ! defined $idx[0] || $idx[0] == 0 ) {
@@ -571,7 +572,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.024
+Version 0.025
 
 =cut
 
@@ -1079,6 +1080,14 @@ I<prefix> expects as its value a string. This string is put in front of the elem
 printing. The chosen elements are returned without this I<prefix>.
 
 The default value is "- " if the I<layout> is 3 else the default is the empty string ("").
+
+=item
+
+prompt
+
+The prompt line before the choices.
+
+Defaults to "Choose:".
 
 =back
 

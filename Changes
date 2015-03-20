@@ -1,8 +1,11 @@
 Revision history for Term::Choose::Util
 
 
+0.025   2015-03-20
+        - "choose_a_subset": new option "prompt".
+
 0.024   2015-02-22
-        - "choose_multi": default_index is 0 if not defined.
+        - "choose_multi": current index is 0 if not defined.
 
 0.023   2015-02-05
         - Use constant.
