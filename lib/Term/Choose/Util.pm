@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.025';
+our $VERSION = '0.026';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
                      print_hash term_size unicode_sprintf unicode_trim );
@@ -38,7 +38,13 @@ sub choose_a_dir {
     my ( $opt ) = @_;
     $opt = {} if ! defined $opt;
     my $dir = encode( 'locale_fs', $opt->{dir} );
-    $dir = File::HomeDir->my_home() if ! defined $dir;
+    if ( defined $dir && ! -d $dir ) {
+        my $prompt = "Could not find the directory \"$dir\". Falling back to the home directory.";
+        choose( [ 'Press ENTER to continue' ], { prompt => $prompt } );
+        $dir = File::HomeDir->my_home();
+    }
+    $dir = File::HomeDir->my_home()                  if ! defined $dir;
+    die "Could not find the home directory \"$dir\"" if ! -d $dir;
     my $show_hidden = defined $opt->{show_hidden}  ? $opt->{show_hidden}  : 1;
     my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
     my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
@@ -99,9 +105,15 @@ sub choose_dirs {
     my ( $opt ) = @_;
     $opt = {} if ! defined $opt;
     my $start_dir   = encode( 'locale_fs', $opt->{dir} );
-    $start_dir = File::HomeDir->my_home() if ! defined $start_dir;
+    if ( defined $start_dir && ! -d $start_dir ) {
+        my $prompt = "Could not find the directory \"$start_dir\". Falling back to the home directory.";
+        choose( [ 'Press ENTER to continue' ], { prompt => $prompt } );
+        $start_dir = File::HomeDir->my_home();
+    }
+    $start_dir = File::HomeDir->my_home()                  if ! defined $start_dir;
+    die "Could not find the home directory \"$start_dir\"" if ! -d $start_dir;
     my $show_hidden = defined $opt->{show_hidden}  ? $opt->{show_hidden}  : 1;
-    my $current     = $opt->{current};
+    my $current     = $opt->{current};                                                          # check if exists
     my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
     my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     my $layout      = defined $opt->{layout}       ? $opt->{layout}       : 1;
@@ -494,7 +506,7 @@ sub print_hash {
 }
 
 
-sub term_size {
+sub term_size { # ######
     my ( $handle_out ) = defined $_[0] ? $_[0] : \*STDOUT;
     if ( $^O eq 'MSWin32' ) {
         my ( $width, $height ) = Win32::Console->new()->Size();
@@ -572,7 +584,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.025
+Version 0.026
 
 =cut
 
@@ -593,114 +605,6 @@ Nothing by default.
 Values in brackets are default values.
 
 Unknown option names are ignored.
-
-=head2 choose_a_directory DEPRECATED
-
-Use C<choose_a_dir> instead - C<choose_a_directory> will be removed.
-
-    $chosen_directory = choose_a_directory( $dir, { layout => 1 } )
-
-With C<choose_a_directory> the user can browse through the directory tree (as far as the granted rights permit it) and
-choose a directory which is returned.
-
-The first argument is the starting point directory.
-
-The second and optional argument is a reference to a hash. With this hash it can be set the different options:
-
-=over
-
-=item
-
-back
-
-Set the string for the "back" menu entry.
-
-"back" menu entry: C<choose_a_directory> returns C<undef>.
-
-Default: "C<<>"
-
-=item
-
-clear_screen
-
-  enabled, the screen is cleared before the output.
-
-Values: 0,[1].
-
-=item
-
-confirm
-
-Set the string for the "confirm" menu entry.
-
-"confirm" menu entry: C<choose_a_directory> returns the chosen directory.
-
-Default: "C<.>"
-
-=item
-
-enchanted
-
-If set to 1, the default cursor position is on the "up" menu entry. If the directory name remains the same after an
-user input, the default cursor position changes to "back".
-
-If set to 0, the default cursor position is on the "back" menu entry.
-
-Values: 0,[1].
-
-=item
-
-justify
-
-Elements in columns are left justified if set to 0, right justified if set to 1 and centered if set to 2.
-
-Values: [0],1,2.
-
-=item
-
-layout
-
-See the option I<layout> in L<Term::Choose>
-
-Values: 0,[1],2,3.
-
-=item
-
-mouse
-
-Set the mouse mode.
-
-Values: [0],1,2,3,4.
-
-=item
-
-order
-
-If set to 1, the items are ordered vertically else they are ordered horizontally.
-
-This option has no meaning if I<layout> is set to 3.
-
-Values: 0,[1].
-
-=item
-
-show_hidden
-
-If enabled, hidden directories are added to the available directories.
-
-Values: 0,[1].
-
-=item
-
-up
-
-Set the string for the "up" menu entry.
-
-"up" menu entry: C<choose_a_directory> moves to the parent directory if it is not already in the root directory.
-
-Default: "C<..>"
-
-=back
 
 =head2 choose_a_dir
 
@@ -753,7 +657,7 @@ Default: "C<.>"
 dir
 
 Set the starting point directory. Defaults to the home directory or the current working directory if the home directory
-cannot be found out.
+cannot be found.
 
 =item
 
@@ -881,7 +785,7 @@ Default: "C< = >"
 dir
 
 Set the starting point directory. Defaults to the home directory or the current working directory if the home directory
-cannot be found out.
+cannot be found.
 
 =item
 
