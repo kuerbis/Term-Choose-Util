@@ -804,7 +804,7 @@ The "back"-menu-entry ( "C< < >" ) resets the list of chosen directories if any.
 empty, "C< < >" causes C<choose_dirs> to return nothing.
 
 C<choose_dirs> uses the same option as C<choose_a_dir>. The option I<current> expects as its value a reference to an
-array (directories shown as the current chosen directories).
+array (directories shown as the current directories).
 
 =over
 
