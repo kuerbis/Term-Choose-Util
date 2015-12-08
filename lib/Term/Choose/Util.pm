@@ -4,15 +4,15 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.026';
+our $VERSION = '0.027';
 use Exporter 'import';
-our @EXPORT_OK = qw( choose_a_dir choose_dirs choose_a_number choose_a_subset choose_multi insert_sep length_longest
-                     print_hash term_size unicode_sprintf unicode_trim );
+our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset choose_multi
+                     insert_sep length_longest print_hash term_size unicode_sprintf unicode_trim );
 
 use Cwd                   qw( realpath );
 use Encode                qw( decode encode );
 use File::Basename        qw( dirname );
-use File::Spec::Functions qw( catdir );
+use File::Spec::Functions qw( catdir catfile );
 use List::Util            qw( sum );
 
 use Encode::Locale    qw();
@@ -34,7 +34,81 @@ use constant {
     RESTORE_CURSOR_POSITION => "\e[u",
 };
 
-sub choose_a_dir {
+
+
+sub choose_dirs {
+    my ( $opt ) = @_;
+    my ( $o, $start_dir ) = _prepare_opt_choose_path( $opt );
+    my $new         = [];
+    my $dir         = realpath $start_dir;
+    my $previous    = $dir;
+    my @pre         = ( undef, $o->{confirm}, $o->{add_dir}, $o->{up} );
+    my $default_idx = $o->{enchanted}  ? $#pre : 0;
+
+    while ( 1 ) {
+        my ( $dh, @dirs );
+        if ( ! eval {
+            opendir( $dh, $dir ) or die $!;
+            1 }
+        ) {
+            print "$@";
+            choose( [ 'Press Enter:' ], { prompt => '' } );
+            $dir = dirname $dir;
+            next;
+        }
+        while ( my $file = readdir $dh ) {
+            next if $file =~ /^\.\.?\z/;
+            next if $file =~ /^\./ && ! $o->{show_hidden};
+            push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
+        }
+        closedir $dh;
+        my $lf = Text::LineFold->new( Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_',
+                                        Urgent => 'FORCE', ColMax => ( term_size() )[0] );
+        my $len_key;
+        my $prompt;
+        $prompt .= $o->{prompt} . "\n" if $o->{prompt};
+        if ( defined $o->{current} ) {
+            $len_key = 7;
+            $prompt .= sprintf "%*s: %s\n",   $len_key, 'Current', join ', ', map { "\"$_\"" } @{$o->{current}};
+            $prompt .= sprintf "%*s: %s\n\n", $len_key, 'New',     join ', ', map { "\"$_\"" } @$new;
+        }
+        else {
+            $len_key = 3;
+            $prompt .= sprintf "%*s: %s\n\n", $len_key, 'New', join ', ', map { "\"$_\"" } @$new;
+        }
+        my $key_cwd = 'pwd: ';
+        $prompt  = $lf->fold( '' , ' ' x $len_key, $prompt );
+        $prompt .= $lf->fold( '' , ' ' x length $key_cwd, $key_cwd . decode( 'locale_fs', $previous ) );
+        my $choice = choose(
+            [ @pre, sort( @dirs ) ],
+            { prompt => $prompt, undef => $o->{back}, default => $default_idx, mouse => $o->{mouse},
+              justify => $o->{justify}, layout => $o->{layout}, order => $o->{order}, clear_screen => $o->{clear_screen} }
+        );
+        if ( ! defined $choice ) {
+            return if ! @$new;
+            $new = [];
+            next;
+        }
+        $default_idx = $o->{enchanted}  ? $#pre : 0;
+        if ( $choice eq $o->{confirm} ) {
+            return $new;
+        }
+        elsif ( $choice eq $o->{add_dir} ) {
+            if ( $o->{decoded} ) {
+                push @$new, decode( 'locale_fs', $previous );
+            }
+            else {
+                push @$new, $previous;
+            }
+            next;
+        }
+        $dir = $choice eq $o->{up} ? dirname( $dir ) : catdir( $dir, encode 'locale_fs', $choice );
+        $default_idx = 0 if $previous eq $dir;
+        $previous = $dir;
+    }
+}
+
+sub _prepare_opt_choose_path {
     my ( $opt ) = @_;
     $opt = {} if ! defined $opt;
     my $dir = encode( 'locale_fs', $opt->{dir} );
@@ -45,21 +119,54 @@ sub choose_a_dir {
     }
     $dir = File::HomeDir->my_home()                  if ! defined $dir;
     die "Could not find the home directory \"$dir\"" if ! -d $dir;
-    my $show_hidden = defined $opt->{show_hidden}  ? $opt->{show_hidden}  : 1;
-    my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
-    my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
-    my $layout      = defined $opt->{layout}       ? $opt->{layout}       : 1;
-    my $order       = defined $opt->{order}        ? $opt->{order}        : 1;
-    #                 $opt->{prompt};            #
-    my $justify     = defined $opt->{justify}      ? $opt->{justify}      : 0;
-    my $enchanted   = defined $opt->{enchanted}    ? $opt->{enchanted}    : 1;
-    my $confirm     = defined $opt->{confirm}      ? $opt->{confirm}      : '.';
-    my $up          = defined $opt->{up}           ? $opt->{up}           : '..';
-    my $back        = defined $opt->{back}         ? $opt->{back}         : '<';
-    my $curr        = $dir;
-    my $previous    = $dir;
-    my @pre         = ( undef, $confirm, $up );
-    my $default     = $enchanted  ? $#pre : 0;
+    my $defaults =  {
+        show_hidden  => 1,
+        clear_screen => 1,
+        mouse        => 0,
+        layout       => 1,
+        order        => 1,
+        justify      => 0,
+        enchanted    => 1,
+        confirm      => ' . ',
+        up           => ' .. ',
+        file         => ' >F ',
+        back         => ' < ',
+        decoded      => 1,
+        current      => undef,
+        prompt       => undef,
+    };
+    my $called_from = ( caller( 1 ) )[3];
+    if ( $called_from =~ /choose_dirs\z/ ) {
+        $defaults->{confirm} = ' = ';
+        $defaults->{add_dir} = ' . ';
+    }
+    #for my $opt ( keys %$opt ) {
+    #    die "$opt: invalid option!" if ! exists $defaults->{$opt};
+    #}
+    my $o = {};
+    for my $key ( keys %$defaults ) {
+        $o->{$key} = defined $opt->{$key} ? $opt->{$key} : $defaults->{$key};
+    }
+    return $o, $dir;
+}
+
+sub choose_a_dir {
+    my ( $opt ) = @_;
+    return _choose_a_path( $opt, 0 );
+}
+
+sub choose_a_file {
+    my ( $opt ) = @_;
+    return _choose_a_path( $opt, 1 );
+}
+
+sub _choose_a_path {
+    my ( $opt, $a_file ) = @_;
+    my ( $o, $dir ) = _prepare_opt_choose_path( $opt );
+    my @pre = ( undef, ( $a_file ? $o->{file} : $o->{confirm} ), $o->{up} );
+    my $default_idx = $o->{enchanted}  ? 2 : 0;
+    my $curr     = encode 'locale_fs', $o->{current};
+    my $previous = $dir;
 
     while ( 1 ) {
         my ( $dh, @dirs );
@@ -74,117 +181,79 @@ sub choose_a_dir {
         }
         while ( my $file = readdir $dh ) {
             next if $file =~ /^\.\.?\z/;
-            next if $file =~ /^\./ && ! $show_hidden;
+            next if $file =~ /^\./ && ! $o->{show_hidden};
             push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
         }
         closedir $dh;
-        my $prompt = $opt->{prompt};
-        if ( defined $prompt ) {
-            $prompt .= 'Dir: ' . decode( 'locale_fs', $dir );
+        my $prompt;
+        $prompt .= $o->{prompt} . "\n" if $o->{prompt};
+        if ( $a_file || ! $curr ) {
+            $prompt .= 'Dir: ' . decode 'locale_fs', $dir;
         }
         else {
-            $prompt  = 'Current dir: "' . decode( 'locale_fs', $curr ) . '"' . "\n";
-            $prompt .= '    New dir: "' . decode( 'locale_fs', $dir  ) . '"' . "\n\n";
+            $prompt  = sprintf "%11s: \"%s\"\n", 'Current dir', decode( 'locale_fs', $curr );
+            $prompt .= sprintf "%11s: \"%s\"\n\n",   'New dir', decode( 'locale_fs', $dir );
         }
         my $choice = choose(
             [ @pre, sort( @dirs ) ],
-            { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
-              justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
+            { prompt => $prompt, undef => $o->{back}, default => $default_idx, mouse => $o->{mouse},
+              justify => $o->{justify}, layout => $o->{layout}, order => $o->{order}, clear_screen => $o->{clear_screen} }
         );
-        return if ! defined $choice;
-        return decode( 'locale_fs', $previous ) if $choice eq $confirm;
+        if ( ! defined $choice ) {
+            return;
+        }
+        elsif ( $choice eq $o->{confirm} ) {
+            return decode 'locale_fs', $previous if $o->{decoded};
+            return $previous;
+        }
+        elsif ( $choice eq $o->{file} ) {
+            my $file = _a_file( $o, $dir );
+            next if ! length $file;
+            return decode 'locale_fs', $file if $o->{decoded};
+            return $file;
+        }
         $choice = encode( 'locale_fs', $choice );
-        $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, $choice );
-        $default = $previous eq $dir ? 0 : $enchanted  ? $#pre : 0;
+        if ( $choice eq $o->{up} ) {
+            $dir = dirname $dir;
+        }
+        else {
+            $dir = catdir $dir, $choice;
+        }
+        if ( $previous eq $dir ) {
+            $default_idx = 0;
+        }
+        else {
+            $default_idx = $o->{enchanted}  ? 2 : 0;
+        }
         $previous = $dir;
     }
 }
 
-
-sub choose_dirs {
-    my ( $opt ) = @_;
-    $opt = {} if ! defined $opt;
-    my $start_dir   = encode( 'locale_fs', $opt->{dir} );
-    if ( defined $start_dir && ! -d $start_dir ) {
-        my $prompt = "Could not find the directory \"$start_dir\". Falling back to the home directory.";
-        choose( [ 'Press ENTER to continue' ], { prompt => $prompt } );
-        $start_dir = File::HomeDir->my_home();
+sub _a_file {
+    my ( $o, $dir ) = @_;
+    my ( $dh, @files );
+    if ( ! eval {
+        opendir( $dh, $dir ) or die $!;
+        1 }
+    ) {
+        print "$@";
+        choose( [ 'Press Enter:' ], { prompt => '' } );
+        return;
     }
-    $start_dir = File::HomeDir->my_home()                  if ! defined $start_dir;
-    die "Could not find the home directory \"$start_dir\"" if ! -d $start_dir;
-    my $show_hidden = defined $opt->{show_hidden}  ? $opt->{show_hidden}  : 1;
-    my $current     = $opt->{current};                                                          # check if exists
-    my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
-    my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
-    my $layout      = defined $opt->{layout}       ? $opt->{layout}       : 1;
-    my $order       = defined $opt->{order}        ? $opt->{order}        : 1;
-    my $justify     = defined $opt->{justify}      ? $opt->{justify}      : 0;
-    my $enchanted   = defined $opt->{enchanted}    ? $opt->{enchanted}    : 1;
-    #--------------------------------------#
-    my $confirm     = defined $opt->{confirm}      ? $opt->{confirm}      : ' = ';
-    my $back        = defined $opt->{back}         ? $opt->{back}         : ' < ';
-    my $add_dir     = defined $opt->{add_dir}      ? $opt->{add_dir}      : ' . ';
-    my $up          = defined $opt->{up}           ? $opt->{up}           : ' .. ';
-    my $key_cur     = 'Current: ';
-    my $key_new     = '    New: ';
-    my $gcs_cur     = Unicode::GCString->new( "$key_cur" );
-    my $gcs_new     = Unicode::GCString->new( "$key_new" );
-    my $len_key     = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
-    my $key_cwd     = 'pwd: ';
-    my $gcs_key_cwd = Unicode::GCString->new( "$key_cwd" );
-    my $len_key_cwd = $gcs_key_cwd->columns;
-    my $new         = [];
-    my $dir         = realpath $start_dir;
-    my $previous    = $dir;
-    my @pre         = ( undef, $confirm, $add_dir, $up );
-    my $default     = $enchanted  ? $#pre : 0;
-
-    while ( 1 ) {
-        my ( $dh, @dirs );
-        if ( ! eval {
-            opendir( $dh, $dir ) or die $!;
-            1 }
-        ) {
-            print "$@";
-            choose( [ 'Press Enter:' ], { prompt => '' } );
-            $dir = dirname $dir;
-            next;
-        }
-        while ( my $file = readdir $dh ) {
-            next if $file =~ /^\.\.?\z/;
-            next if $file =~ /^\./ && ! $show_hidden;
-            push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
-        }
-        closedir $dh;
-        my $lf = Text::LineFold->new( Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_',
-                                        Urgent => 'FORCE', ColMax => ( term_size() )[0] );
-        my $prompt = ''; # = $opt->{prompt};
-        $prompt .= $key_cur . join( ', ', map { "\"$_\"" } @$current ) . "\n"   if defined $current;
-        $prompt .= $key_new . join( ', ', map { "\"$_\"" } @$new )     . "\n\n";
-        $prompt = $lf->fold( '' , ' ' x $len_key, $prompt );
-        $prompt .= $lf->fold( '' , ' ' x $len_key_cwd, $key_cwd . decode( 'locale_fs', $previous ) );
-        my $choice = choose(
-            [ @pre, sort( @dirs ) ],
-            { prompt => $prompt, undef => $back, default => $default, mouse => $mouse,
-              justify => $justify, layout => $layout, order => $order, clear_screen => $clear }
-        );
-        if ( ! defined $choice ) {
-            return if ! @$new;
-            $new = [];
-            next;
-        }
-        $default = $enchanted  ? $#pre : 0;
-        if ( $choice eq $confirm ) {
-            return $new;
-        }
-        elsif ( $choice eq $add_dir ) {
-            push @$new, decode( 'locale_fs', $previous );
-            next;
-        }
-        $dir = $choice eq $up ? dirname( $dir ) : catdir( $dir, encode 'locale_fs', $choice );
-        $default = 0 if $previous eq $dir;
-        $previous = $dir;
+    while ( my $file = readdir $dh ) {
+        next if $file =~ /^\.\.?\z/;
+        next if $file =~ /^\./ && ! $o->{show_hidden};
+        push @files, decode( 'locale_fs', $file ) if -f catdir $dir, $file;
     }
+    closedir $dh;
+    my $prompt = sprintf 'Files in %s:', decode( 'locale_fs', $dir );
+    my $choice = choose(
+        [ undef, sort( @files ) ],
+        { prompt => $prompt, undef => $o->{back}, mouse => $o->{mouse}, justify => $o->{justify},
+          layout => $o->{layout}, order => $o->{order}, clear_screen => $o->{clear_screen} }
+    );
+    return if ! length $choice;
+    return catfile $dir, encode 'locale_fs', $choice;
 }
 
 
@@ -584,7 +653,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.026
+Version 0.027
 
 =cut
 
@@ -619,22 +688,13 @@ To move around in the directory tree:
 
 - choose the "up"-menu-entry ("C<..>") to move upwards.
 
-To return the current working-directory as the chosen directory choose the "confirm"-menu-entry (defaults to the "C<.>"
-string).
+To return the current working-directory as the chosen directory choose "C<.>".
 
 The "back"-menu-entry ("C<<>") causes C<choose_a_dir> to return nothing.
 
 As an argument it can be passed a reference to a hash. With this hash the user can set the different options:
 
 =over
-
-=item
-
-back
-
-Set the string for the "back" menu entry.
-
-Default: "C<<>"
 
 =item
 
@@ -646,11 +706,16 @@ Values: 0,[1].
 
 =item
 
-confirm
+current
 
-Set the string for the "confirm" menu entry.
+If set, C<choose_a_dir> shows I<current> initially as the current chosen directory. Then the chosen directory is shown
+as the current chosen directory.
 
-Default: "C<.>"
+=item
+
+decoded
+
+If enabled, the directory name is returned decoded with C<locale_fs> form L<Encode::Local>.
 
 =item
 
@@ -712,141 +777,37 @@ If enabled, hidden directories are added to the available directories.
 
 Values: 0,[1].
 
-=item
-
-up
-
-Set the string for the "up" menu entry.
-
-Default: "C<..>"
-
 =back
+
+=head2 choose_a_file
+
+    $chosen_file = choose_a_file( { layout => 1, ... } )
+
+Browse the directory tree like with C<choose_a_dir>. Select "C<E<gt>F>" to get the files of the current directory; than
+the chosen file is returned.
+
+The options are passed as a reference to a hash. See L<choose_a_dir> for the different options. C<choose_a_file> has no
+option I<current>.
 
 =head2 choose_dirs
 
-    @chosen_directories = choose_dirs( { layout => 1, ... } )
+    $chosen_directories = choose_dirs( { layout => 1, ... } )
 
-With C<choose_dirs> the user can browse through the directory tree (as far as the granted rights permit it) and
-choose directories.
+C<choose_dirs> is similar to C<choose_a_dir> but it is possible to return multiple directories.
 
-To move around in the directory tree:
+Different to C<choose_a_dir>:
 
-- select a directory and press C<Return> to enter in the selected directory.
+"C< . >" adds the current directory to the list of chosen directories.
 
-- choose the "up"-menu-entry ( "C< .. >" ) to move upwards.
-
-To add the current working-directory to the list of chosen directories choose the "add_dir"-menu-entry - the default
-"add_dir"-menu-entry string is "C< . >".
-
-To return (a reference to) the chosen list of directories select the "confirm"-menu-entry which defaults to the "C< = >"
-string.
+To return the chosen list of directories (as an array reference) select the "confirm"-menu-entry "C< = >".
 
 The "back"-menu-entry ( "C< < >" ) resets the list of chosen directories if any. If the list of chosen directories is
-empty, the "back"-menu-entryelse causes C<choose_dirs> to return nothing.
+empty, "C< < >" causes C<choose_dirs> to return nothing.
 
-As an argument it can be passed a reference to a hash. With this hash the user can set the different options:
+C<choose_dires> uses the same option as C<choose_a_dir>. The option I<current> expects as its value a reference to an
+array (directories initially shown as the current chosen directories).
 
 =over
-
-=item
-
-add_dir
-
-Set the string for the "add_dir" menu entry.
-
-Default: "C< . >"
-
-=item
-
-back
-
-Set the string for the "back" menu entry.
-
-Default: "C< < >"
-
-=item
-
-clear_screen
-
-If enabled, the screen is cleared before the output.
-
-Values: 0,[1].
-
-=item
-
-confirm
-
-Set the string for the "confirm" menu entry.
-
-Default: "C< = >"
-
-=item
-
-dir
-
-Set the starting point directory. Defaults to the home directory or the current working directory if the home directory
-cannot be found.
-
-=item
-
-enchanted
-
-If set to 1, the default cursor position is on the "up" menu entry. If the pwd-directory name remains the same after an
-user input, the default cursor position changes to "back".
-
-If set to 0, the default cursor position is on the "back" menu entry.
-
-Values: 0,[1].
-
-=item
-
-justify
-
-Elements in columns are left justified if set to 0, right justified if set to 1 and centered if set to 2.
-
-Values: [0],1,2.
-
-=item
-
-layout
-
-See the option I<layout> in L<Term::Choose>
-
-Values: 0,[1],2,3.
-
-=item
-
-mouse
-
-See the option I<mouse> in L<Term::Choose>
-
-Values: [0],1,2,3,4.
-
-=item
-
-order
-
-If set to 1, the items are ordered vertically else they are ordered horizontally.
-
-This option has no meaning if I<layout> is set to 3.
-
-Values: 0,[1].
-
-=item
-
-show_hidden
-
-If enabled, hidden directories are added to the available directories.
-
-Values: 0,[1].
-
-=item
-
-up
-
-Set the string for the "up" menu entry.
-
-Default: "C< .. >"
 
 =back
 
