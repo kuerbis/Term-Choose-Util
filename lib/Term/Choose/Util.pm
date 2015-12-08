@@ -708,8 +708,7 @@ Values: 0,[1].
 
 current
 
-If set, C<choose_a_dir> shows I<current> initially as the current chosen directory. Then the chosen directory is shown
-as the current chosen directory.
+If set, C<choose_a_dir> shows I<current> as the current directory.
 
 =item
 
@@ -804,8 +803,8 @@ To return the chosen list of directories (as an array reference) select the "con
 The "back"-menu-entry ( "C< < >" ) resets the list of chosen directories if any. If the list of chosen directories is
 empty, "C< < >" causes C<choose_dirs> to return nothing.
 
-C<choose_dires> uses the same option as C<choose_a_dir>. The option I<current> expects as its value a reference to an
-array (directories initially shown as the current chosen directories).
+C<choose_dirs> uses the same option as C<choose_a_dir>. The option I<current> expects as its value a reference to an
+array (directories shown as the current chosen directories).
 
 =over
 
