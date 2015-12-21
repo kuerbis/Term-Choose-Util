@@ -714,7 +714,7 @@ If set, C<choose_a_dir> shows I<current> as the current directory.
 
 decoded
 
-If enabled, the directory name is returned decoded with C<locale_fs> form L<Encode::Local>.
+If enabled, the directory name is returned decoded with C<locale_fs> form L<Encode::Locale>.
 
 =item
 
