@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.028';
+our $VERSION = '0.029';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset choose_multi
                      insert_sep length_longest print_hash term_size unicode_sprintf unicode_trim );
@@ -653,7 +653,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.028
+Version 0.029
 
 =cut
 
