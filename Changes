@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.028   2015-12-21
+        - Bugfix documentation.
+
 0.027   2015-12-08
         - New function "choose_a_file".
         - Code refactoring.

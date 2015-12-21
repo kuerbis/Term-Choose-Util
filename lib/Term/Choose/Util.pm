@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.027';
+our $VERSION = '0.028';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset choose_multi
                      insert_sep length_longest print_hash term_size unicode_sprintf unicode_trim );
@@ -653,7 +653,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.027
+Version 0.028
 
 =cut
 
@@ -785,7 +785,7 @@ Values: 0,[1].
 Browse the directory tree like with C<choose_a_dir>. Select "C<E<gt>F>" to get the files of the current directory; than
 the chosen file is returned.
 
-The options are passed as a reference to a hash. See L<choose_a_dir> for the different options. C<choose_a_file> has no
+The options are passed as a reference to a hash. See L</choose_a_dir> for the different options. C<choose_a_file> has no
 option I<current>.
 
 =head2 choose_dirs
