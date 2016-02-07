@@ -4,10 +4,10 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.029';
+our $VERSION = '0.030';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset choose_multi
-                     insert_sep length_longest print_hash term_size unicode_sprintf unicode_trim );
+                     insert_sep length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
 
 use Cwd                   qw( realpath );
 use Encode                qw( decode encode );
@@ -24,15 +24,6 @@ use Unicode::GCString qw();
 
 use if $^O eq 'MSWin32', 'Win32::Console';
 use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
-
-use constant {
-    BSPACE                  => 0x7f,
-    UP                      => "\e[A",
-    CLEAR_TO_END_OF_SCREEN  => "\e[0J",
-    CLEAR_SCREEN            => "\e[H\e[J",
-    SAVE_CURSOR_POSITION    => "\e[s",
-    RESTORE_CURSOR_POSITION => "\e[u",
-};
 
 
 
@@ -63,7 +54,7 @@ sub choose_dirs {
         }
         closedir $dh;
         my $lf = Text::LineFold->new( Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_',
-                                        Urgent => 'FORCE', ColMax => ( term_size() )[0] );
+                                        Urgent => 'FORCE', ColMax => term_width() );
         my $len_key;
         my $prompt;
         $prompt .= $o->{prompt} . "\n" if $o->{prompt};
@@ -285,7 +276,7 @@ sub choose_a_number {
     }
     my $confirm_tmp = sprintf "%-*s", $longest * 2 + $len_tab, $confirm;
     my $back_tmp    = sprintf "%-*s", $longest * 2 + $len_tab, $back;
-    my $term_width = ( term_size() )[0];
+    my $term_width = term_width();
     my $gcs_longest_range = Unicode::GCString->new( "$choices_range[0]" );
     if ( $gcs_longest_range->columns > $term_width ) {
         @choices_range = ();
@@ -530,7 +521,7 @@ sub print_hash {
     my $preface      = $opt->{preface};
     #-----------------------------------------------------------------#
     my $line_fold = defined $opt->{lf} ? $opt->{lf} : { Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_', Urgent => 'FORCE' };
-    my $term_width = ( term_size() )[0];
+    my $term_width = term_width();
     if ( ! $maxcols || $maxcols > $term_width  ) {
         $maxcols = $term_width - $right_margin;
     }
@@ -575,7 +566,7 @@ sub print_hash {
 }
 
 
-sub term_size { # ######
+sub term_size { #
     my ( $handle_out ) = defined $_[0] ? $_[0] : \*STDOUT;
     if ( $^O eq 'MSWin32' ) {
         my ( $width, $height ) = Win32::Console->new()->Size();
@@ -583,6 +574,12 @@ sub term_size { # ######
     }
     return( ( GetTerminalSize( $handle_out ) )[ 0, 1 ] );
 }
+
+
+sub term_width {
+    return( ( term_size( $_[0] ) )[0] );
+}
+
 
 
 sub unicode_sprintf {
@@ -653,7 +650,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.029
+Version 0.030
 
 =cut
 
@@ -782,8 +779,8 @@ Values: 0,[1].
 
     $chosen_file = choose_a_file( { layout => 1, ... } )
 
-Browse the directory tree like with C<choose_a_dir>. Select "C<E<gt>F>" to get the files of the current directory; than
-the chosen file is returned.
+Browse the directory tree the same way as described for C<choose_a_dir>. Select "C<E<gt>F>" to get the files of the
+current directory; than the chosen file is returned.
 
 The options are passed as a reference to a hash. See L</choose_a_dir> for the different options. C<choose_a_file> has no
 option I<current>.
@@ -1188,6 +1185,10 @@ On MSWin32 OS, if it is written to the last column on the screen the cursor goes
 To prevent this newline when writing to a Windows terminal C<term_size> subtracts 1 from the terminal width before
 returning the width if the OS is MSWin32.
 
+=head2 term_width
+
+C<term_size> returns the current terminal width. See L</term_size> above.
+
 =head2 unicode_sprintf
 
     $unicode = unicode_sprintf( $unicode, $available_width, $rightpad );
@@ -1241,7 +1242,7 @@ L<stackoverflow|http://stackoverflow.com> for the help.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2014-2015 Matthäus Kiem.
+Copyright 2014-2016 Matthäus Kiem.
 
 This library is free software; you can redistribute it and/or modify it under the same terms as Perl 5.10.0. For
 details, see the full text of the licenses in the file LICENSE.

@@ -1,6 +1,12 @@
 Revision history for Term::Choose::Util
 
 
+0.030   2016-02-07
+        - New function "term_width".
+        - Code refactoring.
+        - Code cleanup.
+        - Update copyright year.
+
 0.029   2015-12-21
         - Fixed link to Encode::Locale.  [github #1 - Mohammad S Anwar (Manwar)].
 
