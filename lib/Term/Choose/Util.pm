@@ -4,9 +4,9 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.030';
+our $VERSION = '0.030_01';
 use Exporter 'import';
-our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset choose_multi
+our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset change_config choose_multi
                      insert_sep length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
 
 use Cwd                   qw( realpath );
@@ -15,16 +15,20 @@ use File::Basename        qw( dirname );
 use File::Spec::Functions qw( catdir catfile );
 use List::Util            qw( sum );
 
-use Encode::Locale    qw();
-use File::HomeDir     qw();
-use Term::Choose      qw( choose );
-use Term::ReadKey     qw( GetTerminalSize ReadKey ReadMode );
-use Text::LineFold    qw();
-use Unicode::GCString qw();
+use Encode::Locale         qw();
+use File::HomeDir          qw();
+use Term::Choose           qw( choose );
+use Term::Choose::LineFold qw( line_fold cut_to_printwidth print_columns );
+use Term::ReadKey          qw( GetTerminalSize ReadKey ReadMode );
 
 use if $^O eq 'MSWin32', 'Win32::Console';
 use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 
+
+
+sub choose_multi {
+    change_config( @_ );
+}
 
 
 sub choose_dirs {
@@ -53,8 +57,6 @@ sub choose_dirs {
             push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
         }
         closedir $dh;
-        my $lf = Text::LineFold->new( Charset => 'utf-8', Newline => "\n", OutputCharset => '_UNICODE_',
-                                        Urgent => 'FORCE', ColMax => term_width() );
         my $len_key;
         my $prompt;
         $prompt .= $o->{prompt} . "\n" if $o->{prompt};
@@ -68,8 +70,8 @@ sub choose_dirs {
             $prompt .= sprintf "%*s: %s\n\n", $len_key, 'New', join ', ', map { "\"$_\"" } @$new;
         }
         my $key_cwd = 'pwd: ';
-        $prompt  = $lf->fold( '' , ' ' x $len_key, $prompt );
-        $prompt .= $lf->fold( '' , ' ' x length $key_cwd, $key_cwd . decode( 'locale_fs', $previous ) );
+        $prompt  = line_fold( $prompt,                                     term_width(), '' , ' ' x $len_key );
+        $prompt .= line_fold( $key_cwd . decode( 'locale_fs', $previous ), term_width(), '' , ' ' x length $key_cwd );
         my $choice = choose(
             [ @pre, sort( @dirs ) ],
             { prompt => $prompt, undef => $o->{back}, default => $default_idx, mouse => $o->{mouse},
@@ -262,8 +264,7 @@ sub choose_a_number {
     my $confirm    = defined $opt->{confirm}      ? $opt->{confirm}      : 'CONFIRM';
     my $reset      = defined $opt->{reset}        ? $opt->{reset}        : 'reset';
     my $tab        = '  -  ';
-    my $gcs_tab    = Unicode::GCString->new( "$tab" );
-    my $len_tab = $gcs_tab->columns;
+    my $len_tab = print_columns( $tab ); #
     my $longest    = $digits;
     $longest += int( ( $digits - 1 ) / 3 ) if $thsd_sep ne '';
     my @choices_range = ();
@@ -276,9 +277,7 @@ sub choose_a_number {
     }
     my $confirm_tmp = sprintf "%-*s", $longest * 2 + $len_tab, $confirm;
     my $back_tmp    = sprintf "%-*s", $longest * 2 + $len_tab, $back;
-    my $term_width = term_width();
-    my $gcs_longest_range = Unicode::GCString->new( "$choices_range[0]" );
-    if ( $gcs_longest_range->columns > $term_width ) {
+    if ( print_columns( "$choices_range[0]" ) > term_width() ) {
         @choices_range = ();
         for my $di ( 0 .. $digits - 1 ) {
             my $begin = 1 . '0' x $di;
@@ -327,7 +326,8 @@ sub choose_a_number {
         }
         my $zeros = ( split /\s*-\s*/, $range )[0];
         $zeros =~ s/^\s*\d//;
-        ( my $zeros_no_sep = $zeros ) =~ s/\Q$thsd_sep\E//g if $thsd_sep ne '';
+        my $zeros_no_sep;
+        ( $zeros_no_sep = $zeros ) =~ s/\Q$thsd_sep\E//g if $thsd_sep ne '';
         my $count_zeros = length $zeros_no_sep;
         my @choices = $count_zeros ? map( $_ . $zeros, 1 .. 9 ) : ( 0 .. 9 );
         # Choose
@@ -368,14 +368,13 @@ sub choose_a_subset {
     my $key_cur = defined $opt->{p_curr}       ? $opt->{p_curr}       : 'Current > ';
     my $key_new = defined $opt->{p_new}        ? $opt->{p_new}        : '    New > ';
     if ( $prefix ) {
-        my $gcs_prefix = Unicode::GCString->new( "$prefix" );
-        my $len_prefix = $gcs_prefix->columns();
+        my $len_prefix = print_columns( "$prefix" );
         $confirm = ( ' ' x $len_prefix ) . $confirm;
         $back    = ( ' ' x $len_prefix ) . $back;
     }
-    my $gcs_cur = Unicode::GCString->new( "$key_cur" );
-    my $gcs_new = Unicode::GCString->new( "$key_new" );
-    my $len_key = $gcs_cur->columns > $gcs_new->columns ? $gcs_cur->columns : $gcs_new->columns;
+    my $len_cur = print_columns( "$key_cur" );
+    my $len_new = print_columns( "$key_new" );
+    my $len_key = $len_cur > $len_new ? $len_cur : $len_new;
     my $new_idx = [];
     my $new     = [];
 
@@ -414,7 +413,7 @@ sub choose_a_subset {
 }
 
 
-sub choose_multi {
+sub change_config {
     my ( $menu, $val, $opt ) = @_;
     $opt = {} if ! defined $opt;
     my $prompt   = defined $opt->{prompt}       ? $opt->{prompt}       : 'Choose:';
@@ -430,8 +429,7 @@ sub choose_multi {
     my $tmp     = {};
     for my $sub ( @$menu ) {
         my ( $key, $prompt ) = @$sub;
-        my $gcs = Unicode::GCString->new( "$prompt" );
-        my $length = $gcs->columns();
+        my $length = print_columns( "$prompt" );
         $longest = $length if $length > $longest;
         if ( ! defined $val->{$key} ) {
             $val->{$key} = 0;
@@ -499,8 +497,7 @@ sub length_longest {
     my $len = [];
     my $longest = 0;
     for my $i ( 0 .. $#$list ) {
-        my $gcs = Unicode::GCString->new( "$list->[$i]" );
-        $len->[$i] = $gcs->columns();
+        $len->[$i] = print_columns( "$list->[$i]" );
         $longest = $len->[$i] if $len->[$i] > $longest;
     }
     return wantarray ? ( $longest, $len ) : $longest;
@@ -527,16 +524,14 @@ sub print_hash {
     }
     $len_key += $left_margin;
     my $sep = ' : ';
-    my $gcs = Unicode::GCString->new( "$sep" );
-    my $len_sep = $gcs->columns();
+    my $len_sep = print_columns( "$sep" );
     if ( $len_key + $len_sep > int( $maxcols / 3 * 2 ) ) {
         $len_key = int( $maxcols / 3 * 2 ) - $len_sep;
     }
-    my $lf = Text::LineFold->new( %$line_fold, ColMax => $maxcols );
     my @vals = ();
     if ( defined $preface ) {
         for my $line ( split "\n", $preface ) {
-            push @vals, split "\n", $lf->fold( $line, 'Plain' );
+            push @vals, split "\n", line_fold( $line, $maxcols, '', '' );
         }
     }
     for my $key ( @$keys ) {
@@ -552,7 +547,7 @@ sub print_hash {
             $val = $hash->{$key};
         }
         my $pr_key = sprintf "%*.*s%*s", $len_key, $len_key, $key, $len_sep, $sep;
-        my $text = $lf->fold( '' , ' ' x ( $len_key + $len_sep ), $pr_key . $val );
+        my $text = line_fold( $pr_key . $val, $maxcols, '' , ' ' x ( $len_key + $len_sep ) );
         $text =~ s/\n+\z//;
         for my $val ( split /\n+/, $text ) {
             push @vals, $val;
@@ -584,23 +579,9 @@ sub term_width {
 
 sub unicode_sprintf {
     my ( $unicode, $avail_width, $right_justify ) = @_;
-    my $gcs = Unicode::GCString->new( "$unicode" );
-    my $colwidth = $gcs->columns;
+    my $colwidth = print_columns( "$unicode" );
     if ( $colwidth > $avail_width ) {
-        my $pos = $gcs->pos;
-        $gcs->pos( 0 );
-        my $cols = 0;
-        my $gc;
-        while ( defined( $gc = $gcs->next ) ) {
-            if ( $avail_width < ( $cols += $gc->columns ) ) {
-                my $ret = $gcs->substr( 0, $gcs->pos - 1 );
-                $gcs->pos( $pos );
-                if ( $ret->columns() < $avail_width ) {
-                    return $right_justify ? ' ' . $ret->as_string : ' ' . $ret->as_string;
-                }
-                return $ret->as_string;
-            }
-        }
+        return cut_to_printwidth( $unicode, $avail_width );
     }
     elsif ( $colwidth < $avail_width ) {
         if ( $right_justify ) {
@@ -613,25 +594,12 @@ sub unicode_sprintf {
     return $unicode;
 }
 
-# from https://rt.cpan.org/Public/Bug/Display.html?id=84549
+
 
 sub unicode_trim {
     my ( $unicode, $len ) = @_;
     return '' if $len <= 0;
-    my $gcs = Unicode::GCString->new( "$unicode" );
-    my $pos = $gcs->pos;
-    $gcs->pos( 0 );
-    my $cols = 0;
-    my $gc;
-    while ( defined( $gc = $gcs->next ) ) {
-        if ( $len < ( $cols += $gc->columns ) ) {
-            my $ret = $gcs->substr( 0, $gcs->pos - 1 );
-            $gcs->pos( $pos );
-            return $ret->as_string;
-        }
-    }
-    $gcs->pos( $pos );
-    return $gcs->as_string;
+    cut_to_printwidth( $unicode, $len );
 }
 
 
@@ -650,7 +618,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.030
+Version 0.030_01
 
 =cut
 
@@ -952,9 +920,13 @@ Defaults to "Choose:".
 
 =back
 
-=head2 choose_multi
+=head2 choose_multi DEPRECATED
 
-    $tmp = choose_multi( $menu, $config, { in_place => 0 } )
+Use C<change_config> instead. C<choose_multi> will be removed.
+
+=head2 change_config
+
+    $tmp = change_config( $menu, $config, { in_place => 0 } )
     if ( defined $tmp ) {
         for my $key ( keys %$tmp ) {
             $config->{$key} = $tmp->{$key};
@@ -1041,13 +1013,13 @@ A prompt string used instead of the default prompt string.
 
 =back
 
-When C<choose_multi> is called, it displays for each array entry a row with the prompt string and the current value.
+When C<change_config> is called, it displays for each array entry a row with the prompt string and the current value.
 It is possible to scroll through the rows. If a row is selected, the set and displayed value changes to the next. If the
 end of the list of the values is reached, it begins from the beginning of the list.
 
-C<choose_multi> returns nothing if no changes are made. If the user has changed values and C<in_place> is set to 1,
-C<choose_multi> modifies the hash passed as the second argument in place and returns 1. With the option C<in_place>
-set to 0 C<choose_multi> does no in place modifications but modifies a copy of the configuration hash. A reference to
+C<change_config> returns nothing if no changes are made. If the user has changed values and C<in_place> is set to 1,
+C<change_config> modifies the hash passed as the second argument in place and returns 1. With the option C<in_place>
+set to 0 C<change_config> does no in place modifications but modifies a copy of the configuration hash. A reference to
 that modified copy is then returned.
 
 =head2 insert_sep
