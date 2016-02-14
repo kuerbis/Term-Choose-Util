@@ -327,7 +327,12 @@ sub choose_a_number {
         my $zeros = ( split /\s*-\s*/, $range )[0];
         $zeros =~ s/^\s*\d//;
         my $zeros_no_sep;
-        ( $zeros_no_sep = $zeros ) =~ s/\Q$thsd_sep\E//g if $thsd_sep ne '';
+        if ( $thsd_sep eq '' ) {
+            $zeros_no_sep = $zeros;
+        }
+        else {
+            ( $zeros_no_sep = $zeros ) =~ s/\Q$thsd_sep\E//g;
+        }
         my $count_zeros = length $zeros_no_sep;
         my @choices = $count_zeros ? map( $_ . $zeros, 1 .. 9 ) : ( 0 .. 9 );
         # Choose
