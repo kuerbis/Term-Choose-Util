@@ -4,9 +4,9 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.030_01';
+our $VERSION = '0.050';
 use Exporter 'import';
-our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset change_config choose_multi
+our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset settings_menu choose_multi
                      insert_sep length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
 
 use Cwd                   qw( realpath );
@@ -27,7 +27,7 @@ use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 
 
 sub choose_multi {
-    change_config( @_ );
+    settings_menu( @_ );
 }
 
 
@@ -120,7 +120,8 @@ sub _prepare_opt_choose_path {
         order        => 1,
         justify      => 0,
         enchanted    => 1,
-        confirm      => ' . ',
+        confirm      => ' = ',
+        add_dir      => ' . ',
         up           => ' .. ',
         file         => ' >F ',
         back         => ' < ',
@@ -128,11 +129,6 @@ sub _prepare_opt_choose_path {
         current      => undef,
         prompt       => undef,
     };
-    my $called_from = ( caller( 1 ) )[3];
-    if ( $called_from =~ /choose_dirs\z/ ) {
-        $defaults->{confirm} = ' = ';
-        $defaults->{add_dir} = ' . ';
-    }
     #for my $opt ( keys %$opt ) {
     #    die "$opt: invalid option!" if ! exists $defaults->{$opt};
     #}
@@ -418,7 +414,7 @@ sub choose_a_subset {
 }
 
 
-sub change_config {
+sub settings_menu {
     my ( $menu, $val, $opt ) = @_;
     $opt = {} if ! defined $opt;
     my $prompt   = defined $opt->{prompt}       ? $opt->{prompt}       : 'Choose:';
@@ -566,7 +562,7 @@ sub print_hash {
 }
 
 
-sub term_size { #
+sub term_size {
     my ( $handle_out ) = defined $_[0] ? $_[0] : \*STDOUT;
     if ( $^O eq 'MSWin32' ) {
         my ( $width, $height ) = Win32::Console->new()->Size();
@@ -623,7 +619,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.030_01
+Version 0.050
 
 =cut
 
@@ -656,11 +652,11 @@ To move around in the directory tree:
 
 - select a directory and press C<Return> to enter in the selected directory.
 
-- choose the "up"-menu-entry ("C<..>") to move upwards.
+- choose the "up"-menu-entry ("C< .. >") to move upwards.
 
-To return the current working-directory as the chosen directory choose "C<.>".
+To return the current working-directory as the chosen directory choose "C< = >".
 
-The "back"-menu-entry ("C<<>") causes C<choose_a_dir> to return nothing.
+The "back"-menu-entry ("C< < >") causes C<choose_a_dir> to return nothing.
 
 As an argument it can be passed a reference to a hash. With this hash the user can set the different options:
 
@@ -927,11 +923,11 @@ Defaults to "Choose:".
 
 =head2 choose_multi DEPRECATED
 
-Use C<change_config> instead. C<choose_multi> will be removed.
+Use C<settings_menu> instead. C<choose_multi> will be removed.
 
-=head2 change_config
+=head2 settings_menu
 
-    $tmp = change_config( $menu, $config, { in_place => 0 } )
+    $tmp = settings_menu( $menu, $config, { in_place => 0 } )
     if ( defined $tmp ) {
         for my $key ( keys %$tmp ) {
             $config->{$key} = $tmp->{$key};
@@ -1018,13 +1014,13 @@ A prompt string used instead of the default prompt string.
 
 =back
 
-When C<change_config> is called, it displays for each array entry a row with the prompt string and the current value.
+When C<settings_menu> is called, it displays for each array entry a row with the prompt string and the current value.
 It is possible to scroll through the rows. If a row is selected, the set and displayed value changes to the next. If the
 end of the list of the values is reached, it begins from the beginning of the list.
 
-C<change_config> returns nothing if no changes are made. If the user has changed values and C<in_place> is set to 1,
-C<change_config> modifies the hash passed as the second argument in place and returns 1. With the option C<in_place>
-set to 0 C<change_config> does no in place modifications but modifies a copy of the configuration hash. A reference to
+C<settings_menu> returns nothing if no changes are made. If the user has changed values and C<in_place> is set to 1,
+C<settings_menu> modifies the hash passed as the second argument in place and returns 1. With the option C<in_place>
+set to 0 C<settings_menu> does no in place modifications but modifies a copy of the configuration hash. A reference to
 that modified copy is then returned.
 
 =head2 insert_sep

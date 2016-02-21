@@ -1,10 +1,16 @@
 Revision history for Term::Choose::Util
 
 
+0.050   2016-02-21
+        - "choose_a_dir": "confirm" is now " = " instead of " . ".
+        - Renamed "change_config" to "settings_menu".
+        - "Term::Choose": minimum version "1.500".
+
 0.030_01   2016-02-14
         - Renamed "choose_multi" to "change_config".
         - Requires "Term::Choose::LineFold".
         - "Term::Choose": minimum version is "1.209_01".
+        - Bugfix in "choose_a_number".
         - Code refactoring.
         - Update documentation.
 
