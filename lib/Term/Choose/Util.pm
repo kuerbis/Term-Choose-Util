@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.050';
+our $VERSION = '0.051';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset settings_menu choose_multi
                      insert_sep length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
@@ -93,6 +93,9 @@ sub choose_dirs {
             else {
                 push @$new, $previous;
             }
+            $dir = dirname $dir;
+            $default_idx = 0 if $previous eq $dir;
+            $previous = $dir;
             next;
         }
         $dir = $choice eq $o->{up} ? dirname( $dir ) : catdir( $dir, encode 'locale_fs', $choice );
@@ -619,7 +622,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.050
+Version 0.051
 
 =cut
 

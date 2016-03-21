@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.051   2016-03-21
+        - "choose_dirs": cd back to the parent dir after adding a dir.
+
 0.050   2016-02-21
         - "choose_a_dir": "confirm" is now " = " instead of " . ".
         - Renamed "change_config" to "settings_menu".
