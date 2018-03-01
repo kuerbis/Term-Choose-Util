@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.056';
+our $VERSION = '0.057';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset settings_menu insert_sep
                      length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
@@ -17,7 +17,6 @@ use List::Util            qw( sum );
 
 use Encode::Locale         qw();
 use File::HomeDir          qw();
-use List::MoreUtils        qw( first_index );
 use Term::Choose           qw( choose );
 use Term::Choose::LineFold qw( line_fold cut_to_printwidth print_columns );
 use Term::ReadKey          qw( GetTerminalSize ReadKey ReadMode );
@@ -27,7 +26,7 @@ use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 
 
 
-sub _stringify_array { join( ', ', map { "\"$_\"" } @_ ) }
+sub _stringify_array { join( ', ', map { "$_" } @_ ) }
 
 sub choose_dirs {
     my ( $opt ) = @_;
@@ -66,7 +65,7 @@ sub choose_dirs {
             $key_w = 5;
             $lines .= sprintf "new: %s", _stringify_array( @$new );
         }
-        my $key_cwd = "\n     ==>  ";
+        my $key_cwd = "==>  ";
         $lines  = line_fold( $lines,                                          term_width(), '' , ' ' x $key_w );
         $lines .= "\n";
         $lines .= line_fold( $key_cwd . decode( 'locale_fs', "[$previous]" ), term_width(), '' , ' ' x length $key_cwd );
@@ -74,7 +73,7 @@ sub choose_dirs {
             $lines = $o->{info} . "\n" . $lines;
         }
         if ( ! defined $o->{prompt} ) {
-            $o->{prompt} = ' ';
+            $o->{prompt} = '';
         }
         $lines .= "\n" if length $o->{prompt};
         $lines .= $o->{prompt};
@@ -123,7 +122,7 @@ sub _prepare_opt_choose_path {
     die "Could not find the home directory \"$dir\"" if ! -d $dir;
     my $defaults =  {
         show_hidden  => 1,
-        clear_screen => 1,
+        clear_screen => 0,
         mouse        => 0,
         layout       => 1,
         order        => 1,
@@ -312,18 +311,15 @@ sub choose_a_number {
         $opt = $digits;
         $digits = 7;
     }
-    $opt = {} if ! defined $opt;
+    $opt = {} if ! defined $opt;                                                            # removed current docu
     my $prompt = $opt->{prompt};
-    my $info =         defined $opt->{info}         ? $opt->{info}         : '';
-    my $current;
-    if ( exists $opt->{current} ) {
-       $current      = defined $opt->{current}      ? $opt->{current}      : '';
-    }
-    my $thsd_sep     = defined $opt->{thsd_sep}     ? $opt->{thsd_sep}     : ',';
-    my $name         = defined $opt->{name}         ? $opt->{name}         : '';
-    my $clear        = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
-    my $mouse        = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
-    my $small_on_top = defined $opt->{small_on_top} ? $opt->{small_on_top} : 0;     # experimental
+    my $info   = $opt->{info};
+    my $name   = $opt->{name};
+    my $thsd_sep   = defined $opt->{thsd_sep}     ? $opt->{thsd_sep}     : ',';
+
+    my $clear      = defined $opt->{clear_screen} ? $opt->{clear_screen} : 0;
+    my $mouse      = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
+    my $small      = defined $opt->{small}        ? $opt->{small}        : 0;     # small # experimental
     #-------------------------------------------#
     my $back       = defined $opt->{back}         ? $opt->{back}         : 'BACK';
     my $back_short = defined $opt->{back_short}   ? $opt->{back_short}   : '<<';
@@ -331,8 +327,7 @@ sub choose_a_number {
     my $reset      = defined $opt->{reset}        ? $opt->{reset}        : 'reset';
     my $tab        = '  -  ';
     my $len_tab = print_columns( $tab ); #
-    my $longest    = $digits;
-    $longest += int( ( $digits - 1 ) / 3 ) if $thsd_sep ne '';
+    my $longest = $digits + int( ( $digits - 1 ) / 3 ) * length $thsd_sep; ###
     my @choices_range = ();
     for my $di ( 0 .. $digits - 1 ) {
         my $begin = 1 . '0' x $di;
@@ -356,39 +351,29 @@ sub choose_a_number {
     }
     my %numbers;
     my $result;
-    $name = $name . ' ' if length $name;
-    my $empty = '-';
+    if ( ! defined $name ) {
+        $name = '> ';
+    }
 
     NUMBER: while ( 1 ) {
-        my $lines = $info;
-        $lines .= "\n" if length $lines;
-        my $new_result = length $result ? $result : $empty;
-        my $str_w = print_columns( "$choices_range[0]" );
-        my $term_w = term_width();
-        if ( defined $current ) {
-            $current = insert_sep( $current, $thsd_sep );
-            my $tmp1 = sprintf " current ${name}%*s", $longest, $current;
-            my $tmp2 = sprintf "     new ${name}%*s", $longest, $new_result;
-            if ( $str_w > $term_w ) {
-                $lines .= sprintf "%*s", $term_w, $new_result;
-            }
-            else {
-                $lines .= sprintf "%*s\n", $str_w, $tmp1;
-                $lines .= sprintf "%*s",   $str_w, $tmp2;
-            }
+        my @tmp;
+        if ( defined $info ) {
+            push @tmp, $info;
         }
-        else {
-            my $tmp = sprintf "${name}%s", $new_result;
-            $lines .= sprintf "%*s", ( $str_w > $term_w ? $term_w : $str_w ), $tmp;
+        my $new_result = length $result ? $result : '';
+        my $row = sprintf(  "${name}%*s", $longest, $new_result );
+        if ( print_columns( $row ) > term_width() ) {
+            $row = $new_result;
         }
+        push @tmp, $row;
         if ( defined $prompt ) {
-            $lines .= "\n" if length $lines && length $prompt;
-            $lines .= $prompt;
+            push @tmp, $prompt;
         }
+        my $lines = join "\n", @tmp;
         my @pre = ( undef, $confirm_tmp );
         # Choose
         my $range = choose(
-            $small_on_top ? [ @pre, reverse @choices_range ] : [ @pre, @choices_range ],
+            $small ? [ @pre, reverse @choices_range ] : [ @pre, @choices_range ],
             { prompt => $lines, layout => 3, justify => 1, mouse => $mouse,
               clear_screen => $clear, undef => $back_tmp }
         );
@@ -441,65 +426,53 @@ sub choose_a_number {
 sub choose_a_subset {
     my ( $available, $opt ) = @_;
     $opt = {} if ! defined $opt; # check ?
-    my $current = $opt->{current};
-    my $show_fmt    = defined $opt->{show_fmt}     ? $opt->{show_fmt}     : 1;      # experimental
+    my $show_fmt    = defined $opt->{show_fmt}     ? $opt->{show_fmt}     : 0;      # experimental # fmt_info
     my $keep_chosen = defined $opt->{keep_chosen}  ? $opt->{keep_chosen}  : 1;      # experimental
     my $mark        = $opt->{mark};                                                 # experimental
-    my $info        = defined $opt->{info}         ? $opt->{info}         : '';
+    my $info        = $opt->{info};
+    my $name        = $opt->{name};                                                 # docu
+    my $prompt      = $opt->{prompt};
     my $index       = defined $opt->{index}        ? $opt->{index}        : 0;
-    my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $clear       = defined $opt->{clear_screen} ? $opt->{clear_screen} : 0;
     my $mouse       = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     my $layout      = defined $opt->{layout}       ? $opt->{layout}       : 3;
     my $order       = defined $opt->{order}        ? $opt->{order}        : 1;
-    my $prefix      = defined $opt->{prefix}       ? $opt->{prefix}       : ( $layout == 3 ? '- ' : '' );
+    my $prefix      = defined $opt->{prefix}       ? $opt->{prefix}       : ( $layout == 3 ? '  ' : '' );
     my $justify     = defined $opt->{justify}      ? $opt->{justify}      : 0;
-    my $prompt      = defined $opt->{prompt}       ? $opt->{prompt}       : ''; #
     #--------------------------------------#
-    my $confirm     = defined $opt->{confirm}     ? $opt->{confirm}     : 'CONFIRM';    # layout 0|1|2  [OK] [<<]
-    my $back        = defined $opt->{back}        ? $opt->{back}        : 'BACK';
-    my $key_cur     = defined $opt->{p_curr}      ? $opt->{p_curr}      : 'Current: '; #
-    my $key_new     = defined $opt->{p_new}       ? $opt->{p_new}       : ( defined $current ? '    New: ' : 'Chosen: ' ); #
-    if ( $layout == 3 && $prefix ) {
-        my $len_prefix = print_columns( "$prefix" );
-        $confirm = ( ' ' x $len_prefix ) . $confirm;
-        $back    = ( ' ' x $len_prefix ) . $back;
-    }
-    my $key_cur_w = print_columns( "$key_cur" );
-    my $key_new_w = print_columns( "$key_new" );
-    my $key_w = $key_cur_w > $key_new_w ? $key_cur_w : $key_new_w;
+    my $confirm     = defined $opt->{confirm}     ? $opt->{confirm}     : ( $layout == 3 ? 'CONFIRM' : '-OK-' );
+    my $back        = defined $opt->{back}        ? $opt->{back}        : ( $layout == 3 ? 'BACK'    : '<<'   );
+    #my $subseq_tab = 4;
+    my $subseq_tab = print_columns( $name || '' );
     my @new_idx;
-
     my @cur_avail = @$available;
 
     while ( 1 ) {
-        my $lines = $info;
-        $lines .= "\n" if length $lines;
-        if ( $show_fmt == 0 ) {
-            $lines .= join( ', ', @{$opt->{current}} ) . "\n" if defined $current;
-            my $tmp = join( ', ', @{$available}[@new_idx] );
-            $lines .= ! length $tmp  ? '--' : $tmp;
+        my @tmp;
+        if ( defined $info ) {
+            push @tmp, $info;
         }
-        elsif ( $show_fmt == 1 ) {
-            $lines .= $key_cur . join( ', ', map { "\"$_\"" } @{$opt->{current}} ) . "\n" if defined $current;
-            $lines .= $key_new . join( ', ', map { "\"$_\"" } @{$available}[@new_idx] );
+        if ( $show_fmt == 0 ) {
+            $name = '> ' if ! defined $name;
+            push @tmp,  $name . join( ', ', map { defined $_ ? $_ : '' } @{$available}[@new_idx] );
         }
         else {
-            $lines .= join( "\n", @{$available}[@new_idx] );
+            push @tmp, $name . "\n" if defined $name;
+            push @tmp, join( "\n", map { '  ' . ( defined $_ ? $_ : '' ) } @{$available}[@new_idx] ) if @{$available}[@new_idx];
         }
         if ( defined $prompt ) {
-            $lines .= "\n" if length $lines && length $prompt;
-            $lines .= $prompt;
+            push @tmp, $prompt;
         }
         my @pre = ( undef, $confirm );
         if ( defined $mark && @$mark ) {
             $mark = [ map { $_ + @pre } @$mark ];
         }
-        my @avail_with_prefix = map { $prefix . $_ } @cur_avail;
+        my $lines = join "\n", @tmp;
         # Choose
         my @idx = choose(
-            [ @pre, @avail_with_prefix  ],
+            [ @pre, map { $prefix . ( defined $_ ? $_ : '' ) } @cur_avail ],
             { prompt => $lines, layout => $layout, mouse => $mouse, clear_screen => $clear, justify => $justify,
-              index => 1, lf => [ 0, $key_w ], order => $order, no_spacebar => [ 0 .. $#pre ], undef => $back,
+              index => 1, lf => [ 0, $subseq_tab ], order => $order, no_spacebar => [ 0 .. $#pre ], undef => $back,
               mark => $mark }
         );
         $mark = undef;
@@ -511,24 +484,23 @@ sub choose_a_subset {
             }
             return;
         }
-        if ( $idx[0] == 1 ) {
-            shift @idx;
-            my @tmp_idx;
-            for my $i ( reverse @idx ) {
-                $i -= @pre;
-                my $str = $keep_chosen ? $cur_avail[$i] : splice( @cur_avail, $i, 1 );
-                push @tmp_idx, first_index { $str eq $_ } @$available;
-            }
-            push @new_idx, reverse( @tmp_idx );
-            return $index ? \@new_idx : [ @{$available}[@new_idx] ];
-        }
+        my $ok = $idx[0] == 1 ? shift @idx : 0;
         my @tmp_idx;
         for my $i ( reverse @idx ) {
             $i -= @pre;
-            my $str = $keep_chosen ? $cur_avail[$i] : splice( @cur_avail, $i, 1 );
-            push @tmp_idx, first_index { $str eq $_ } @$available;
+            if ( ! $keep_chosen ) {
+                splice( @cur_avail, $i, 1 );
+                for my $u ( sort @new_idx ) {
+                    last if $u > $i;
+                    ++$i;
+                }
+            }
+            push @tmp_idx, $i;
         }
-        push @new_idx, reverse( @tmp_idx );
+        push @new_idx, reverse @tmp_idx;
+        if ( $ok ) {
+            return $index ? \@new_idx : [ @{$available}[@new_idx] ];
+        }
     }
 }
 
@@ -539,7 +511,7 @@ sub settings_menu {
     my $prompt   = defined $opt->{prompt}       ? $opt->{prompt}       : 'Choose:';
     my $info     = defined $opt->{info}         ? $opt->{info}         : '';
     my $in_place =         $opt->{in_place}; # DEPRECATED
-    my $clear    = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $clear    = defined $opt->{clear_screen} ? $opt->{clear_screen} : 0;
     my $mouse    = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     #---------------------------------------#
     my $confirm = defined $opt->{confirm} ? $opt->{confirm} : 'CONFIRM';
@@ -667,7 +639,7 @@ sub print_hash {
     my $keys         = defined $opt->{keys}         ? $opt->{keys}         : [ sort keys %$hash ];
     my $key_w        = defined $opt->{len_key}      ? $opt->{len_key}      : length_longest( $keys );
     my $maxcols      = $opt->{maxcols};
-    my $clear        = defined $opt->{clear_screen} ? $opt->{clear_screen} : 1;
+    my $clear        = defined $opt->{clear_screen} ? $opt->{clear_screen} : 0;
     my $mouse        = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     my $prompt       = defined $opt->{prompt}       ? $opt->{prompt}       : ( defined $opt->{preface} ? '' : 'Close with ENTER' );
     my $preface      = $opt->{preface};
@@ -773,7 +745,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.056
+Version 0.057
 
 =cut
 
@@ -805,7 +777,7 @@ clear_screen
 
 If enabled, the screen is cleared before the output.
 
-Values: 0,[1]. Default may change in a future release.
+Values: [0],1.
 
 =item
 
@@ -950,10 +922,7 @@ array (directories shown as the current directories).
 
 =head2 choose_a_number
 
-    for ( 1 .. 5 ) {
-        $current = $new
-        $new = choose_a_number( 5, { current => $current, name => 'Testnumber' }  );
-    }
+    $new = choose_a_number( 5, { name => 'Testnumber ' }  );
 
 This function lets you choose/compose a number (unsigned integer) which is returned.
 
@@ -966,17 +935,11 @@ The second and optional argument is a reference to a hash with these keys (optio
 
 =item
 
-current
-
-The current value. If set, two prompt lines are displayed - one for the current number and one for the new number.
-
-=item
-
 name
 
-If set, the value of I<name> is put in front of the composed number in the info-output.
+The value of I<name> is put in front of the composed number in the info-output.
 
-Default: empty string ("");
+Default: "> ";
 
 =item
 
@@ -988,9 +951,13 @@ Default: comma (,).
 
 =back
 
+The option I<current> has been removed. The number passed with the option I<current> can be appended to the I<info>
+string instead. The info-output of the new number has C<$digits + int( ( $digits - 1 ) / 3 ) * length $thsd_sep> print
+columns.
+
 =head2 choose_a_subset
 
-    $subset = choose_a_subset( \@available_items, { current => \@current_subset } )
+    $subset = choose_a_subset( \@available_items, { name => 'new> ' } )
 
 C<choose_a_subset> lets you choose a subset from a list.
 
@@ -999,16 +966,6 @@ As a first argument it is required a reference to an array which provides the av
 The optional second argument is a hash reference. The following options are available:
 
 =over
-
-=item
-
-current
-
-This option expects as its value the current subset of the available list (a reference to an array). If set, two prompt
-lines are displayed - one for the current subset and one for the new subset. Even if the option I<index> is true the
-passed current subset is made of values and not of indexes.
-
-The subset is returned as an array reference.
 
 =item
 
@@ -1034,6 +991,12 @@ Values: 0,1,2,[3].
 
 =item
 
+name
+
+The value of I<name> is a string. It is placed in front of the chosen-subset-info-output.
+
+=item
+
 order
 
 If set to 1, the items are ordered vertically else they are ordered horizontally.
@@ -1049,9 +1012,12 @@ prefix
 I<prefix> expects as its value a string. This string is put in front of the elements of the available list before
 printing. The chosen elements are returned without this I<prefix>.
 
-The default value is "- " if the I<layout> is 3 else the default is the empty string ("").
+The default value is "  " if the I<layout> is 3 else the default is the empty string ("").
 
 =back
+
+The option I<current> has been removed. The values passed with the option I<current> can be appended to the I<info>
+string instead.
 
 =head2 settings_menu
 
