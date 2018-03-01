@@ -311,7 +311,7 @@ sub choose_a_number {
         $opt = $digits;
         $digits = 7;
     }
-    $opt = {} if ! defined $opt;                                                            # removed current docu
+    $opt = {} if ! defined $opt;
     my $prompt = $opt->{prompt};
     my $info   = $opt->{info};
     my $name   = $opt->{name};
@@ -327,7 +327,7 @@ sub choose_a_number {
     my $reset      = defined $opt->{reset}        ? $opt->{reset}        : 'reset';
     my $tab        = '  -  ';
     my $len_tab = print_columns( $tab ); #
-    my $longest = $digits + int( ( $digits - 1 ) / 3 ) * length $thsd_sep; ###
+    my $longest = $digits + int( ( $digits - 1 ) / 3 ) * length $thsd_sep;
     my @choices_range = ();
     for my $di ( 0 .. $digits - 1 ) {
         my $begin = 1 . '0' x $di;
