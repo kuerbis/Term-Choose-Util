@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.057';
+our $VERSION = '0.058';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset settings_menu insert_sep
                      length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
@@ -24,9 +24,6 @@ use Term::ReadKey          qw( GetTerminalSize ReadKey ReadMode );
 use if $^O eq 'MSWin32', 'Win32::Console';
 use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
 
-
-
-sub _stringify_array { join( ', ', map { "$_" } @_ ) }
 
 sub choose_dirs {
     my ( $opt ) = @_;
@@ -54,32 +51,22 @@ sub choose_dirs {
             push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
         }
         closedir $dh;
-        my $lines;
-        my $key_w;
-        if ( defined $o->{current} ) {
-            $key_w = 9;
-            $lines .= sprintf "current: %s\n", _stringify_array( @{$o->{current}} );
-            $lines .= sprintf "    new: %s",   _stringify_array( @$new );
+        my @tmp;
+        if ( defined $o->{info} ) {
+            push @tmp, $o->{info};
         }
-        else {
-            $key_w = 5;
-            $lines .= sprintf "new: %s", _stringify_array( @$new );
+        if ( ! defined $o->{name} ) {
+            $o->{name} = 'New: ';
         }
-        my $key_cwd = "==>  ";
-        $lines  = line_fold( $lines,                                          term_width(), '' , ' ' x $key_w );
-        $lines .= "\n";
-        $lines .= line_fold( $key_cwd . decode( 'locale_fs', "[$previous]" ), term_width(), '' , ' ' x length $key_cwd );
-        if ( length $o->{info} ) {
-            $lines = $o->{info} . "\n" . $lines;
+        push @tmp, $o->{name} . join( ', ', map { s/ /\ /g; $_ } @$new );
+        push @tmp, '++ ' . decode( 'locale_fs', "[$previous]" );
+        if ( defined $o->{prompt} ) {
+            push @tmp, $o->{prompt};
         }
-        if ( ! defined $o->{prompt} ) {
-            $o->{prompt} = '';
-        }
-        $lines .= "\n" if length $o->{prompt};
-        $lines .= $o->{prompt};
+        my $lines = join( "\n", @tmp );
         my $choice = choose(
             [ @pre, sort( @dirs ) ],
-            { prompt => $lines, undef => $o->{back}, default => $default_idx, mouse => $o->{mouse},
+            { prompt => $lines, undef => $o->{back}, default => $default_idx, mouse => $o->{mouse}, lf => [ 0, length $o->{name} ],
               justify => $o->{justify}, layout => $o->{layout}, order => $o->{order}, clear_screen => $o->{clear_screen} }
         );
         if ( ! defined $choice ) {
@@ -109,6 +96,7 @@ sub choose_dirs {
     }
 }
 
+
 sub _prepare_opt_choose_path {
     my ( $opt ) = @_;
     $opt = {} if ! defined $opt;
@@ -121,22 +109,22 @@ sub _prepare_opt_choose_path {
     $dir = File::HomeDir->my_home()                  if ! defined $dir;
     die "Could not find the home directory \"$dir\"" if ! -d $dir;
     my $defaults =  {
+        info         => undef,
+        name         => undef,
+        prompt       => undef,
         show_hidden  => 1,
         clear_screen => 0,
         mouse        => 0,
         layout       => 1,
         order        => 1,
-        info         => '',
         justify      => 0,
         enchanted    => 1,
-        confirm      => ' = ',
-        add_dir      => ' . ',
+        confirm      => ' OK ',
+        add_dir      => ' ++ ',
         up           => ' .. ',
         file         => ' >F ',
-        back         => ' < ',
+        back         => ' << ',
         decoded      => 1,
-        current      => undef,
-        prompt       => undef,
     };
     #for my $opt ( keys %$opt ) {
     #    die "$opt: invalid option!" if ! exists $defaults->{$opt};
@@ -149,7 +137,7 @@ sub _prepare_opt_choose_path {
 }
 
 
-sub _prepare_string { '"' . decode( 'locale_fs', shift ) . '"' }
+sub _prepare_string { decode( 'locale_fs', shift ) }
 
 
 sub choose_a_dir {
@@ -188,30 +176,23 @@ sub _choose_a_path {
             push @dirs, decode( 'locale_fs', $file ) if -d catdir $dir, $file;
         }
         closedir $dh;
-        my $lines = $o->{info};
-        $lines .= "\n" if length $lines;
+        my @tmp;
+        if ( defined $o->{info} ) {
+            push @tmp, $o->{info};
+        }
+        if ( ! defined $o->{name} ) {
+            $o->{name} = 'New: '; # a_file
+        }
         if ( $a_file ) {
-            if ( $curr ) {
-                $lines .= sprintf "Current file: %s\n", _prepare_string( $curr );
-                $lines .= sprintf "    New file: %s", _prepare_string( catfile $dir, $wildcard );
-            }
-            else {
-                $lines .= sprintf "New file: %s", _prepare_string( catfile $dir, $wildcard );
-            }
+            push @tmp, $o->{name} . _prepare_string( catfile $dir, $wildcard );
         }
         else {
-            if ( $curr ) {
-                $lines .= sprintf "Current dir: %s\n", _prepare_string( $curr );
-                $lines .= sprintf "    New dir: %s", _prepare_string( $dir );
-            }
-            else {
-                $lines .= sprintf "New dir: %s", _prepare_string( $dir );
-            }
+            push @tmp, $o->{name} . _prepare_string( $dir );
         }
         if ( defined $o->{prompt} ) {
-            $lines .= "\n" if length $lines && length $o->{prompt};
-            $lines .= $o->{prompt};
+            push @tmp, $o->{prompt};
         }
+        my $lines = join( "\n", @tmp );
         my $choice = choose(
             [ @pre, sort( @dirs ) ],
             { prompt => $lines, undef => $o->{back}, default => $default_idx, mouse => $o->{mouse},
@@ -247,6 +228,8 @@ sub _choose_a_path {
     }
 }
 
+
+
 sub _a_file {
     my ( $o, $dir, $curr, $wildcard ) = @_;
     my $previous;
@@ -272,19 +255,18 @@ sub _a_file {
             choose( [ ' < ' ], { prompt => $prompt } );
             return;
         }
-        my $lines = $o->{info};
-        $lines .= "\n" if length $lines;
-        if ( $curr ) {
-            $lines .= sprintf "Current file: %s\n", _prepare_string( $curr );
-            $lines .= sprintf "    New file: %s", _prepare_string( catfile $dir, $previous // $wildcard );
+        my @tmp;
+        if ( defined $o->{info} ) {
+            push @tmp, $o->{info};
         }
-        else {
-            $lines .= sprintf "New file: %s", _prepare_string( catfile $dir, $previous // $wildcard );
+        if ( ! defined $o->{name} ) {
+            $o->{name} = 'New: '; # file
         }
+        push @tmp, $o->{name} . _prepare_string( catfile $dir, $previous // $wildcard );
         if ( defined $o->{prompt} ) {
-            $lines .= "\n" if length $lines && length $o->{prompt};
-            $lines .= $o->{prompt};
+            push @tmp, $o->{prompt};
         }
+        my $lines = join( "\n", @tmp );
         my @pre = ( undef, $o->{confirm} );
         my $choice = choose(
             [ @pre, sort( @files ) ],
@@ -508,9 +490,9 @@ sub choose_a_subset {
 sub settings_menu {
     my ( $menu, $curr, $opt ) = @_;
     $opt = {} if ! defined $opt;
+    my $info     = $opt->{info};
+    my $in_place = $opt->{in_place}; # DEPRECATED
     my $prompt   = defined $opt->{prompt}       ? $opt->{prompt}       : 'Choose:';
-    my $info     = defined $opt->{info}         ? $opt->{info}         : '';
-    my $in_place =         $opt->{in_place}; # DEPRECATED
     my $clear    = defined $opt->{clear_screen} ? $opt->{clear_screen} : 0;
     my $mouse    = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     #---------------------------------------#
@@ -539,10 +521,16 @@ sub settings_menu {
         $curr->{$key} = 0       if ! defined $curr->{$key};
         $new->{$key}  = $curr->{$key};
     }
-    my $lines = $info;
+    my @tmp;
+    if ( defined $info ) {
+        push @tmp, $info;
+    }
     if ( defined $prompt ) {
-        $lines .= "\n" if length $lines;
-        $lines .= $prompt;
+        push @tmp, $prompt;
+    }
+    my $lines;
+    if ( @tmp ) {
+        $lines = join( "\n", @tmp );
     }
     ###########################
     my $count = 0; # DEPRECATED
@@ -745,7 +733,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.057
+Version 0.058
 
 =cut
 
@@ -814,19 +802,13 @@ To move around in the directory tree:
 
 - choose the "up"-menu-entry ("C< .. >") to move upwards.
 
-To return the current working-directory as the chosen directory choose "C< = >".
+To return the current working-directory as the chosen directory choose "C< OK >".
 
-The "back"-menu-entry ("C< < >") causes C<choose_a_dir> to return nothing.
+The "back"-menu-entry ("C< << >") causes C<choose_a_dir> to return nothing.
 
 As an argument it can be passed a reference to a hash. With this hash the user can set the different options:
 
 =over
-
-=item
-
-current
-
-If set, C<choose_a_dir> shows I<current> as the current directory.
 
 =item
 
@@ -888,15 +870,17 @@ Values: 0,[1].
 
 =back
 
+The option I<current> has been removed. The value passed with the option I<current> can be appended to the I<info>
+string instead.
+
 =head2 choose_a_file
 
     $chosen_file = choose_a_file( { layout => 1, ... } )
 
 Browse the directory tree the same way as described for C<choose_a_dir>. Select "C<E<gt>F>" to get the files of the
-current directory. To return the chosen file select "=".
+current directory. To return the chosen file select C< OK >.
 
-The options are passed as a reference to a hash. See L</choose_a_dir> for the different options. C<choose_a_file> has no
-option I<current>.
+The options are passed as a reference to a hash. See L</choose_a_dir> for the different options
 
 =head2 choose_dirs
 
@@ -906,15 +890,14 @@ C<choose_dirs> is similar to C<choose_a_dir> but it is possible to return multip
 
 Different to C<choose_a_dir>:
 
-"C< . >" adds the current directory to the list of chosen directories.
+"C< ++ >" adds the current directory to the list of chosen directories.
 
-To return the chosen list of directories (as an array reference) select the "confirm"-menu-entry "C< = >".
+To return the chosen list of directories (as an array reference) select the "confirm"-menu-entry "C< OK >".
 
-The "back"-menu-entry ( "C< < >" ) resets the list of chosen directories if any. If the list of chosen directories is
-empty, "C< < >" causes C<choose_dirs> to return nothing.
+The "back"-menu-entry ( "C< << >" ) resets the list of chosen directories if any. If the list of chosen directories is
+empty, "C< << >" causes C<choose_dirs> to return nothing.
 
-C<choose_dirs> uses the same option as C<choose_a_dir>. The option I<current> expects as its value a reference to an
-array (directories shown as the current directories).
+C<choose_dirs> uses the same option as C<choose_a_dir>
 
 =over
 
