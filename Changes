@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.059   2018-03-03
+        - Bugfix: operator '//' not available in Perl 5.8.
+
 0.058   2018-03-02
         - Removed the option 'current' from all subroutines.
 

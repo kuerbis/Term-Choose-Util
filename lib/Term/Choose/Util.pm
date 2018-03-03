@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.058';
+our $VERSION = '0.059';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset settings_menu insert_sep
                      length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
@@ -232,7 +232,7 @@ sub _choose_a_path {
 
 sub _a_file {
     my ( $o, $dir, $curr, $wildcard ) = @_;
-    my $previous;
+    my $previous = '';
 
     while ( 1 ) {
         my ( $dh, @files );
@@ -262,7 +262,7 @@ sub _a_file {
         if ( ! defined $o->{name} ) {
             $o->{name} = 'New: '; # file
         }
-        push @tmp, $o->{name} . _prepare_string( catfile $dir, $previous // $wildcard );
+        push @tmp, $o->{name} . _prepare_string( catfile $dir, length $previous ? $previous : $wildcard );
         if ( defined $o->{prompt} ) {
             push @tmp, $o->{prompt};
         }
@@ -733,7 +733,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.058
+Version 0.059
 
 =cut
 
