@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.060';
+our $VERSION = '0.061';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_dir choose_a_file choose_dirs choose_a_number choose_a_subset settings_menu insert_sep
                      length_longest print_hash term_size term_width unicode_sprintf unicode_trim );
@@ -305,8 +305,8 @@ sub choose_a_number {
     my $mouse      = defined $opt->{mouse}        ? $opt->{mouse}        : 0;
     my $small      = defined $opt->{small}        ? $opt->{small}        : 0;     # small # experimental
     #-------------------------------------------#
-    my $back       = defined $opt->{back}         ? $opt->{back}         : '[<<]'; #'BACK';
-    my $confirm    = defined $opt->{confirm}      ? $opt->{confirm}      : '[OK]'; #'CONFIRM';
+    my $back       = defined $opt->{back}         ? $opt->{back}         : '<<'; #'BACK';
+    my $confirm    = defined $opt->{confirm}      ? $opt->{confirm}      : 'OK'; #'CONFIRM';
     my $back_short = defined $opt->{back_short}   ? $opt->{back_short}   : '<<';
     my $reset      = defined $opt->{reset}        ? $opt->{reset}        : 'reset';
     my $tab        = '  -  ';
@@ -445,7 +445,7 @@ sub choose_a_subset {
         }
         else {
             push @tmp, $name if defined $name;
-            push @tmp, join( "\n", map { defined $_ ? $_ : '' } @{$available}[@$new_idx] ) if @{$available}[@$new_idx];
+            push @tmp, join( "\n", map { ( ' ' x length $prefix ) . ( defined $_ ? $_ : '' ) } @{$available}[@$new_idx] ) if @{$available}[@$new_idx]; # prefix
         }
         if ( defined $prompt ) {
             push @tmp, $prompt;
@@ -703,7 +703,7 @@ Term::Choose::Util - CLI related functions.
 
 =head1 VERSION
 
-Version 0.060
+Version 0.061
 
 =cut
 
