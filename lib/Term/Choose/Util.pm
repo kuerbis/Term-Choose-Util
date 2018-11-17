@@ -671,7 +671,7 @@ sub term_width {
 
 
 sub unicode_sprintf {
-    #my ( $unicode, $_[1], $_[2] ) = @_;
+    #my ( $unicode, $avail_width, $right_justify ) = @_;
     my $colwidth = print_columns( $_[0] );
     if ( $colwidth > $_[1] ) {
         return cut_to_printwidth( $_[0], $_[1] );
