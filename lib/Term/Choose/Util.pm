@@ -1022,7 +1022,8 @@ sofar_begin
 
 The value of I<sofar_begin> is a string.
 
-Subset-info-output: I<sofar_begin> is placed behind the I<name> string as soon as an element has been chosen.
+Subset-info-output: I<sofar_begin> is placed between the I<name> string and the chosen elements as soon as an element
+has been chosen.
 
 Default: empty
 
