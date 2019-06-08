@@ -162,7 +162,7 @@ sub _prepare_string { decode( 'locale_fs', shift ) }
 
 sub choose_a_dir {
     my ( $opt ) = @_;
-    return _choose_a_path( $opt, 0 );print "Press keys to see their ASCII values.  Use Ctrl-C to quit.\n";
+    return _choose_a_path( $opt, 0 );
 }
 
 sub choose_a_file {
