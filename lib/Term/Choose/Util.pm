@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.100';
+our $VERSION = '0.101';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width unicode_sprintf
@@ -313,7 +313,7 @@ sub choose_directories {
         if ( ! defined $self->{current_selection_label} ) {
             $self->{current_selection_label} = 'Dirs: ';
         }
-        push @tmp, $self->{current_selection_label} . join( ', ', map { s/ /\ /g; $_ } @$new ) . '   add_dir' . decode( 'locale_fs', ": $prev_encoded" );
+        push @tmp, $self->{current_selection_label} . join( ', ', map { s/ /\ /g; $_ } @$new ) . '    <<-add-dir-' . decode( 'locale_fs', "[ $prev_encoded ]" );
         if ( length $self->{prompt} ) {
             push @tmp, $self->{prompt};
         }
@@ -919,7 +919,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.100
+Version 0.101
 
 =cut
 
@@ -996,7 +996,7 @@ Default: undef
 
 mouse
 
-Enable the mouse mode. An item can be chosen with the left mouse key, the right mouse key can be used instead the
+Enable the mouse mode. An item can be chosen with the left mouse key, the right mouse key can be used instead of the
 SpaceBar key.
 
 Values: [0],1.
@@ -1371,7 +1371,7 @@ It is possible to scroll through the rows. If a row is selected, the set and dis
 scrolling through the list once the cursor jumps back to the top row.
 
 If the "back" menu entry is chosen, C<settings_menu> does not apply the made changes and returns nothing. If the
-"confirm" menu entry is chosen, C<settings_menu> applies the made changes in place to the pass configuration
+"confirm" menu entry is chosen, C<settings_menu> applies the made changes in place to the passed configuration
 hash-reference (second argument) and returns the number of made changes.
 
 Setting the option I<current_selection_label> to a defined value adds an info output line.
