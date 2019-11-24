@@ -22,7 +22,6 @@ use File::HomeDir  qw();
 
 use Term::Choose                  qw( choose );
 use Term::Choose::LineFold        qw( line_fold cut_to_printwidth print_columns );
-use Term::Choose::Screen          qw( normal );
 use Term::Choose::ValidateOptions qw( validate_options );
 
 
@@ -770,7 +769,6 @@ sub choose_a_subset {
     my $curr_avail = [ @$available ];
     my $bu = [];
     my @pre = ( undef, $self->{confirm} );
-    my $normal = $self->{color} ? normal() : '';
 
     while ( 1 ) {
         my @tmp;
@@ -780,7 +778,7 @@ sub choose_a_subset {
         }
         #if ( @{$available}[@$new_idx] ) {
         if ( @$new_idx ) {
-            $sofar .= $self->{cs_begin} . join( $self->{cs_separator}, map { defined $_ ? $_ . $normal : '' } @{$available}[@$new_idx] ) . $self->{cs_end};
+            $sofar .= $self->{cs_begin} . join( $self->{cs_separator}, map { defined $_ ? $_ : '' } @{$available}[@$new_idx] ) . $self->{cs_end};
         }
         elsif ( $opt->{all_by_default} ) {
             $sofar .= $self->{cs_begin} . '*' . $self->{cs_end};
