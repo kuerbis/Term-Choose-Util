@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.109';
+our $VERSION = '0.110';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf
@@ -147,7 +147,7 @@ sub _valid_options {
         busy_string         => 'Str',
         info                => 'Str',
         init_dir            => 'Str',
-        add_dirs             => 'Str',
+        add_dirs            => 'Str',
         back                => 'Str',
         filter              => 'Str',
         show_files          => 'Str',
@@ -214,7 +214,7 @@ sub _defaults {
         back           => 'BACK',
         show_files     => 'Show-FILES',
         confirm        => 'CONFIRM',
-        parent_dir     => '  ..  ',
+        parent_dir     => '..',
         #mark          => undef,
         mouse          => 0,
         order          => 1,
@@ -310,7 +310,7 @@ sub choose_a_dir {
 
 sub __available_dirs {
     my ( $self, $dir_fs ) = @_;
-    my ( $dh, $dirs_fs );
+    my $dh;
     if ( ! eval {
         opendir( $dh, $dir_fs ) or die $!;
         1 }
@@ -323,13 +323,14 @@ sub __available_dirs {
         $dir_fs = dirname $dir_fs;
         next;
     }
+    my @dirs_fs;
     while ( my $file_fs = readdir $dh ) {
         next if $file_fs =~ /^\.\.?\z/;
         next if $file_fs =~ /^\./ && ! $self->{show_hidden};
-        push @$dirs_fs, $file_fs if -d catdir $dir_fs, $file_fs;
+        push @dirs_fs, $file_fs if -d catdir $dir_fs, $file_fs;
     }
     closedir $dh;
-    return [ sort @$dirs_fs ];
+    return [ sort @dirs_fs ];
 }
 
 
@@ -352,6 +353,7 @@ sub choose_directories {
     my $back     = $self->{back};
     my $confirm  = $self->{confirm};
     my $cs_label = $self->{cs_label};
+    my @bu;
 
     while ( 1 ) {
         my $term_w = get_term_width();
@@ -365,13 +367,19 @@ sub choose_directories {
             $self->{confirm}  = $confirm;
             $self->{prompt}   = 'Browse:';
             $self->{cs_label} = 'Cwd: ';
+            my $marker = "+\x{feff}+";
+            $self->{marker} = $marker;
             $dir_fs = $self->__choose_a_path( $dir_fs );
             if ( ! defined $dir_fs ) {
+                if ( @bu ) {
+                    ( $dir_fs, $chosen_dirs_fs ) = @{pop @bu};
+                    next;
+                }
                 $self->__restore_defaults();
                 return;
             }
-            elsif ( $dir_fs =~ /^\+/ ) {
-                $dir_fs =~ s/^\+//;
+            elsif ( $dir_fs =~ /^\Q$marker\E/ ) {
+                $dir_fs =~ s/^\Q$marker\E//;
                 $mode = $add_dirs;
                 next;
             }
@@ -399,6 +407,7 @@ sub choose_directories {
                 { index => 1 }
             );
             if ( defined $idxs && @$idxs ) {
+                push @bu, [ $dir_fs, [ @$chosen_dirs_fs ] ];
                 push @$chosen_dirs_fs, map { catdir $dir_fs, $_ } @{$avail_dirs_fs}[@$idxs];
             }
             $mode = $browse;
@@ -530,7 +539,7 @@ sub __choose_a_path {
             return $returned_file;
         }
         elsif ( $choice eq $self->{add_dirs} ) {
-            return '+' . $prev_dir_fs; ##
+            return $self->{marker} . $prev_dir_fs; ##
         }
         if ( $choice eq $self->{parent_dir} ) {
             $dir_fs = dirname $dir_fs;
@@ -1040,7 +1049,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.109
+Version 0.110
 
 =cut
 
@@ -1294,11 +1303,15 @@ Default: C<Show-FILES>
 
 C<choose_directories> is similar to C<choose_a_directory> but it is possible to return multiple directories.
 
-Use the  "I<add_dirs>" menu entry to add the current directory to the list of chosen directories.
+Use the  "I<add_dirs>" menu entry to add directories from the current working directory to the list of chosen
+directories.
 
-To return the list of chosen directories (as an array reference) select the "I<confirm>" menu entry.
+Selecting the  "I<add_dirs>" menu entry opens the add-directories sub menu: there one can add directories from the
+current working directory to the list of chosen directories.
 
-The "I<back>" menu entry removes the last added directory. If the list of chosen directories is empty, "I<back>" causes
+To return the list of chosen directories (as an array reference) select the "I<confirm>" entry in main menu.
+
+The "I<back>" menu entry removes the last added directories. If the list of chosen directories is empty, "I<back>" causes
 C<choose_directories> to return nothing.
 
 Options as in L</choose_a_directory> plus

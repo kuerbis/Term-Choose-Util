@@ -1,6 +1,10 @@
 Revision history for Term::Choose::Util
 
 
+0.110   2019-12-08
+        - Update 'choose_directories'.
+        - Update documentation 'choose_directories'.
+
 0.109   2019-12-06
         - Rewritten 'choose_directories'.
         - Code refactoring.
