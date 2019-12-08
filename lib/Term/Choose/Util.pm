@@ -539,7 +539,7 @@ sub __choose_a_path {
             return $returned_file;
         }
         elsif ( $choice eq $self->{add_dirs} ) {
-            return $self->{marker} . $prev_dir_fs; ##
+            return $self->{marker} . $prev_dir_fs;
         }
         if ( $choice eq $self->{parent_dir} ) {
             $dir_fs = dirname $dir_fs;
@@ -1302,9 +1302,6 @@ Default: C<Show-FILES>
     $chosen_directories = choose_directories( { mouse => 1, ... } )
 
 C<choose_directories> is similar to C<choose_a_directory> but it is possible to return multiple directories.
-
-Use the  "I<add_dirs>" menu entry to add directories from the current working directory to the list of chosen
-directories.
 
 Selecting the  "I<add_dirs>" menu entry opens the add-directories sub menu: there one can add directories from the
 current working directory to the list of chosen directories.
