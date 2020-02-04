@@ -127,7 +127,7 @@ sub __prepare_opt {
 sub _valid_options {
     my ( $caller ) = @_;
     my %valid = (
-        all_by_default      => '[ 0 1 ]',   # documentation ###
+        all_by_default      => '[ 0 1 ]',
         clear_screen        => '[ 0 1 ]',
         decoded             => '[ 0 1 ]',
         enchanted           => '[ 0 1 ]',
@@ -214,7 +214,7 @@ sub _defaults {
         back           => 'BACK',
         show_files     => 'Show-FILES',
         confirm        => 'CONFIRM',
-        parent_dir     => '..', ####
+        parent_dir     => '..',
         #mark          => undef,
         mouse          => 0,
         order          => 1,
@@ -365,7 +365,6 @@ sub choose_directories {
         if ( $mode eq $browse ) {
             $self->{back}     = $back;
             $self->{confirm}  = $confirm;
-            #$self->{prompt}   = 'Browse:';
             $self->{prompt}   = $self->{info} . "\n" . ' ' . "\n" . 'Browse:';
             $self->{cs_label} = 'cwd: ';
             ( $dir_fs, my $to_add_dirs ) = $self->__choose_a_path( $dir_fs );
