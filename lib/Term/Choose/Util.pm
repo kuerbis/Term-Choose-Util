@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.114';
+our $VERSION = '0.115';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf
@@ -141,7 +141,8 @@ sub _valid_options {
         alignment           => '[ 0 1 2 ]',
         color               => '[ 0 1 2 ]',
         layout              => '[ 0 1 2 3 ]',
-        mark                => 'ARRAY',
+        mark                => 'ARRAY',     # experimental
+        solo                => 'ARRAY',
         tabs_info           => 'ARRAY',
         tabs_prompt         => 'ARRAY',
         busy_string         => 'Str',
@@ -223,6 +224,7 @@ sub _defaults {
         reset          => 'reset',
         show_hidden    => 1,
         small_first    => 0,
+        #solo          => undef,    # experimental
         cs_begin       => '',
         cs_end         => '',
         #cs_label      => undef,
@@ -253,7 +255,7 @@ sub _routine_options {
         $options = [ @every, qw( small_first reset thousands_separator ) ];
     }
     elsif ( $caller eq 'choose_a_subset' ) {
-        $options = [ @every, qw( layout order alignment enchanted keep_chosen index prefix all_by_default cs_begin cs_end cs_separator mark busy_string no_spacebar ) ];
+        $options = [ @every, qw( layout order alignment enchanted keep_chosen index prefix all_by_default cs_begin cs_end cs_separator mark busy_string solo ) ];
     }
     elsif ( $caller eq 'settings_menu' ) {
         $options = [ @every ];
@@ -788,6 +790,10 @@ sub choose_a_subset {
         if ( defined $self->{mark} && @{$self->{mark}} ) {
             $self->{mark} = [ map { $_ + @pre } @{$self->{mark}} ];
         }
+        my $no_spacebar;
+        if ( defined $self->{solo} ) {
+            $no_spacebar = [ map { $_ + @pre } @{$self->{solo}} ];
+        }
         my $lines = join "\n", @tmp;
         # Choose
         my @idx = choose(
@@ -797,7 +803,7 @@ sub choose_a_subset {
               meta_items => [ 0 .. $#pre ], mark => $self->{mark}, include_highlighted => 2,
               clear_screen => $self->{clear_screen}, hide_cursor => $self->{hide_cursor},
               color => $self->{color}, tabs_info => $self->{tabs_info}, tabs_prompt => $self->{tabs_prompt},
-              undef => $self->{back}, busy_string => $self->{busy_string}, no_spacebar => $self->{no_spacebar} }
+              undef => $self->{back}, busy_string => $self->{busy_string}, no_spacebar => $no_spacebar }
         );
         $self->{mark} = undef;
         if ( ! defined $idx[0] || $idx[0] == 0 ) {
@@ -807,6 +813,14 @@ sub choose_a_subset {
             }
             $self->__restore_defaults();
             return;
+        }
+        if ( defined $self->{solo} ) {
+            my $idx = $idx[0] - @pre;
+            if ( grep { $idx == $_ } @{$self->{solo}} ) {
+                my $return_indexes = $self->{index}; # because __restore_defaults resets $self->{index}
+                $self->__restore_defaults();
+                return [ $return_indexes ? $idx : $available->[ $idx ] ];
+            }
         }
         push @$bu, [ [ @$curr_avail ], [ @$new_idx ] ];
         my $ok = $idx[0] == 1 ? shift @idx : 0; ##
@@ -825,7 +839,15 @@ sub choose_a_subset {
         push @$new_idx, reverse @tmp_idx;
         if ( $ok ) {
             if ( ! @$new_idx && $opt->{all_by_default} ) {
-                $new_idx = [ 0 .. $#{$available} ];
+                if ( defined $self->{solo} ) {
+                    for my $e ( 0 .. $#{$available} ) {
+                        next if List::Util::any { $e == $_ } @{$self->{solo}}; # any
+                        push @$new_idx, $e;
+                    }
+                }
+                else {
+                    $new_idx = [ 0 .. $#{$available} ];
+                }
             }
             my $return_indexes = $self->{index}; # because __restore_defaults resets $self->{index}
             $self->__restore_defaults();
@@ -1019,7 +1041,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.114
+Version 0.115
 
 =cut
 
