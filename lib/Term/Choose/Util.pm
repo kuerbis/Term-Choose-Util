@@ -141,8 +141,8 @@ sub _valid_options {
         alignment           => '[ 0 1 2 ]',
         color               => '[ 0 1 2 ]',
         layout              => '[ 0 1 2 3 ]',
-        mark                => 'ARRAY',     # experimental
-        solo                => 'ARRAY',
+        mark                => 'ARRAY',
+        solo                => 'ARRAY',     # experimental
         tabs_info           => 'ARRAY',
         tabs_prompt         => 'ARRAY',
         busy_string         => 'Str',
