@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.118';
+our $VERSION = '0.119';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf );
@@ -71,10 +71,9 @@ sub __prepare_opt {
         $sub =~ s/^.+::(?:__)?([^:]+)\z/$1/;
         validate_options( _valid_options( $sub ), $opt );
         my $defaults = _defaults();
-        my @have_to_be_defined = grep { $defaults->{$_} !~ /^\d+\z/ } keys %$defaults;
         for my $key ( keys %$opt ) {
-            if ( any { $_ eq $key } @have_to_be_defined ) {
-                $self->{$key} = $opt->{$key} if defined $opt->{$key};
+            if ( ! defined $opt->{$key} && defined $defaults->{$key} ) {
+                $self->{$key} = $defaults->{$key};
             }
             else {
                 $self->{$key} = $opt->{$key};
@@ -987,7 +986,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.118
+Version 0.119
 
 =cut
 
