@@ -764,7 +764,7 @@ sub choose_a_subset {
         my $lines = join "\n", @tmp;
         # Choose
         my @idx = choose(
-            [ @pre, $self->{prefix} ? map { $self->{prefix} . ( defined $_ ? $_ : '' ) } @$curr_avail : @$curr_avail ],
+            [ @pre, length( $self->{prefix} ) ? map { $self->{prefix} . ( defined $_ ? $_ : '' ) } @$curr_avail : @$curr_avail ],
             { info => $self->{info}, prompt => $lines, layout => $self->{layout}, index => 1,
               alignment => $self->{alignment}, order => $self->{order}, mouse => $self->{mouse},
               meta_items => $meta_items, mark => $mark, include_highlighted => 2,
