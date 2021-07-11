@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.126   2021-07-11
+        - Term::Choose minimum version 1.734.
+
 0.125   2021-06-30
         - Update 'choose_a_subset'.
 
