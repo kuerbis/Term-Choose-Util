@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.126';
+our $VERSION = '0.127';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf );
@@ -459,14 +459,14 @@ sub __choose_a_path {
             return;
         }
         elsif ( $choice eq $self->{confirm} ) {
-            return $self->{decode} ? decode( 'locale_fs', $prev_dir_fs ) : $prev_dir_fs;
+            return $self->{decoded} ? decode( 'locale_fs', $prev_dir_fs ) : $prev_dir_fs;
         }
         elsif ( $choice eq $self->{show_files} ) {
             my $file_fs = $self->__a_file( $dir_fs, $wildcard );
             if ( ! length $file_fs ) {
                 next;
             }
-            return $self->{decode} ? decode( 'locale_fs', $file_fs ) : $file_fs;
+            return $self->{decoded} ? decode( 'locale_fs', $file_fs ) : $file_fs;
         }
         elsif ( $choice eq $self->{add_dirs} ) {
             return $prev_dir_fs, 1;
@@ -1019,7 +1019,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.126
+Version 0.127
 
 =cut
 

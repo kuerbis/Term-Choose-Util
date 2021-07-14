@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.127   2021-07-14
+        - 'choose_a_directory': bugfix option 'decoded'.
+
 0.126   2021-07-11
         - Term::Choose minimum version 1.734.
 
