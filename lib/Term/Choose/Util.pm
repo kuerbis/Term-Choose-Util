@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.127';
+our $VERSION = '0.128';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf );
@@ -158,9 +158,9 @@ sub _defaults {
         layout         => 1,
         #tabs_info     => undef,
         #tabs_prompt   => undef,
-        add_dirs       => '[Choose-Dirs]',
+        add_dirs       => 'CHOOSE-Mode <=',
         back           => 'BACK',
-        show_files     => '[Show-Files]',
+        show_files     => 'SHOW-Files <=',
         confirm        => 'CONFIRM',
         parent_dir     => '..',
         #mark          => undef,
@@ -324,18 +324,18 @@ sub choose_directories {
                 { subseq_tab => ' ' x $cs_label_w, color => $self->{color}, join => 1 }
             );
             my $prompt = "\n" . 'CHOOSE directories in "' . decode( 'locale_fs', $dir_fs ) . '":' . "\n";
-            my $bu_opt;
-            my @used_options = qw(info prompt back confirm cs_label cs_begin index);
-            for my $o ( @used_options ) {
-                $bu_opt->{$o} = $self->{$o};
+            my %bu_opt;
+            my $options = _routine_options( 'choose_directories' );
+            for my $o ( @$options ) {
+                $bu_opt{$o} = $self->{$o};
             }
             my $idxs = $self->choose_a_subset(
                 [ sort map { decode 'locale_fs', $_ } @$avail_dirs_fs ],
                 { info => $info, prompt => $prompt, back => '<<', confirm => 'OK', cs_begin => '+ ', cs_label => undef,
                   page => $self->{page}, footer => $self->{footer}, keep => $self->{keep}, index => 1 }
             );
-            for my $o ( @used_options ) {
-                $self->{$o} = $bu_opt->{$o};
+            for my $o ( keys %bu_opt ) {
+                $self->{$o} = $bu_opt{$o};
             }
             if ( defined $idxs && @$idxs ) {
                 push @bu, [ $dir_fs, [ @$chosen_dirs_fs ] ];
@@ -1019,7 +1019,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.127
+Version 0.128
 
 =cut
 
