@@ -312,7 +312,7 @@ sub choose_directories {
         }
         elsif ( $choice eq $change_path ) {
             my $prompt_fmt = $key_path . "%s";
-            my $prompt = $self->{prompt} // 'Choose* ';
+            my $prompt = $self->{prompt} // 'Choose: ';
             if ( length $prompt ) {
                $prompt_fmt .= "\n" . $prompt;
             }
@@ -369,7 +369,7 @@ sub choose_a_file {
 
     CHOOSE_DIR: while ( 1 ) {
         my $prompt_fmt = "File-Directory: %s";
-        my $prompt = $self->{prompt} // 'Choose* ';
+        my $prompt = $self->{prompt} // 'Choose: ';
         if ( length $prompt ) {
             $prompt_fmt .= "\n" . $prompt;
         }
@@ -405,7 +405,7 @@ sub choose_a_directory {
     $self->__prepare_opt( $opt );
     my $init_dir = $self->__prepare_path();
     my $prompt_fmt = $opt->{cs_label} . "%s";
-    my $prompt = $self->{prompt} // 'Choose* ';
+    my $prompt = $self->{prompt} // 'Choose: ';
     if ( length $prompt ) {
         $prompt_fmt .= "\n" . $prompt;
     }
@@ -515,7 +515,7 @@ sub __a_file {
         my @tmp_prompt;
         push @tmp_prompt, 'File-Directory: ' . $dir;
         push @tmp_prompt, 'File: ' . ( length $prev_dir ? $prev_dir : '' );
-        my $prompt = $self->{prompt} // 'Choose* ';
+        my $prompt = $self->{prompt} // 'Choose: ';
         if ( length $prompt ) {
             push @tmp_prompt, $prompt;
         }
