@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.10.0;
 
-our $VERSION = '0.138';
+our $VERSION = '0.139';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf );
@@ -806,8 +806,8 @@ sub settings_menu {
     my ( $self, $menu, $curr, $opt ) = @_;
     $self->__prepare_opt( $opt );
     my $longest = 0;
-    my $new     = {};
-    my $name_w  = {};
+    my $new = {};
+    my $name_w = {};
     for my $sub ( @$menu ) {
         my ( $key, $name, $values ) = @$sub;
         $name_w->{$key} = print_columns_ext( $name, $self->{color} );
@@ -815,7 +815,7 @@ sub settings_menu {
             $longest = $name_w->{$key};
         }
         $curr->{$key} = 0 if ! defined $curr->{$key};
-        $curr->{$key} = 0 if ! defined $values->[$curr->{$key}];
+        $curr->{$key} = 0 if $curr->{$key} > $#$values;
         $new->{$key} = $curr->{$key};
     }
     my @print_keys;
@@ -983,7 +983,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.138
+Version 0.139
 
 =cut
 

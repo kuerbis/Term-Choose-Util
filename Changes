@@ -1,6 +1,9 @@
 Revision history for Term::Choose::Util
 
 
+0.139   2023-09-28
+        - Adapted the code to the documentation.
+
 0.138   2023-09-28
         - settings_menu: set out of bonds indexes to 0.
 
