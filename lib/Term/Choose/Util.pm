@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.10.0;
 
-our $VERSION = '0.137';
+our $VERSION = '0.138';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose_a_directory choose_a_file choose_directories choose_a_number choose_a_subset settings_menu
                      insert_sep get_term_size get_term_width get_term_height unicode_sprintf );
@@ -809,11 +809,14 @@ sub settings_menu {
     my $new     = {};
     my $name_w  = {};
     for my $sub ( @$menu ) {
-        my ( $key, $name ) = @$sub;
+        my ( $key, $name, $values ) = @$sub;
         $name_w->{$key} = print_columns_ext( $name, $self->{color} );
-        $longest      = $name_w->{$key} if $name_w->{$key} > $longest;
-        $curr->{$key} = 0       if ! defined $curr->{$key};
-        $new->{$key}  = $curr->{$key};
+        if ( $name_w->{$key} > $longest ) {
+            $longest = $name_w->{$key};
+        }
+        $curr->{$key} = 0 if ! defined $curr->{$key};
+        $curr->{$key} = 0 if ! defined $values->[$curr->{$key}];
+        $new->{$key} = $curr->{$key};
     }
     my @print_keys;
     for my $sub ( @$menu ) {
@@ -980,7 +983,7 @@ Term::Choose::Util - TUI-related functions for selecting directories, files, num
 
 =head1 VERSION
 
-Version 0.137
+Version 0.138
 
 =cut
 
@@ -1589,6 +1592,8 @@ the keys are the option names
 
 the values (C<0> if not defined) are the indexes of the current value of the respective key/option.
 
+If an index is out of bonds, it is set to C<0>.
+
 =back
 
 With the optional third argument (hash-reference), these options can be passed:
@@ -1659,7 +1664,7 @@ L<stackoverflow|http://stackoverflow.com> for the help.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2014-2022 Matthäus Kiem.
+Copyright 2014-2023 Matthäus Kiem.
 
 This library is free software; you can redistribute it and/or modify it under the same terms as Perl 5.10.0. For
 details, see the full text of the licenses in the file LICENSE.
