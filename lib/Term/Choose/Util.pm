@@ -1113,7 +1113,7 @@ I<margin> expects a reference to an array with four elements in the following or
 
 - right margin (number of terminal columns)
 
-- button margin (number of terminal lines)
+- bottom margin (number of terminal lines)
 
 - left margin (number of terminal columns)
 
